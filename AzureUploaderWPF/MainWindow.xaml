@@ -383,6 +383,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         
                         <TextBlock Text="Azure Storage Configuration" 
@@ -446,30 +447,102 @@
                                  Content="Remember these settings for next time" 
                                  Margin="130,15,0,0" 
                                  Style="{StaticResource ModernCheckBox}"/>
+                        
+                        <!-- Test Connection Button -->
+                        <Button Grid.Row="4" 
+                               Name="TestConnectionButton"
+                               Content="TEST CONNECTION" 
+                               Width="160" 
+                               Height="38"
+                               Margin="130,15,0,0"
+                               Background="#3498DB" 
+                               Foreground="White"
+                               BorderThickness="0"
+                               Click="TestConnectionButton_Click"
+                               HorizontalAlignment="Left">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="6"/>
+                                </Style>
+                            </Button.Resources>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.2" Color="#333"/>
+                            </Button.Effect>
+                        </Button>
                     </Grid>
                 </Border>
 
                 <!-- Upload Button -->
-                <Button Grid.Row="2"
-                      Name="UploadButton" 
-                      Width="160" 
-                      Height="45" 
-                      Content="UPLOAD FILE" 
-                      Margin="0,5,0,25"
-                      Background="#2C3E50" 
-                      Foreground="White" 
-                      BorderThickness="0"
-                    Click="UploadButton_Click"
-                      HorizontalAlignment="Left">
-                    <Button.Resources>
-                        <Style TargetType="Border">
-                            <Setter Property="CornerRadius" Value="6"/>
-                        </Style>
-                    </Button.Resources>
-                    <Button.Effect>
-                        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
-                    </Button.Effect>
-                </Button>
+                <Grid Grid.Row="2" Margin="0,5,0,25">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <Button Grid.Column="0"
+                          Name="UploadButton" 
+                          Width="160" 
+                          Height="45" 
+                          Content="UPLOAD FILE" 
+                          Background="#2C3E50" 
+                          Foreground="White" 
+                          BorderThickness="0"
+                          Click="UploadButton_Click"
+                          HorizontalAlignment="Left">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                        <Button.Effect>
+                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                        </Button.Effect>
+                    </Button>
+                    
+                    <Button Grid.Column="1"
+                          Name="UploadFolderButton" 
+                          Width="180" 
+                          Height="45" 
+                          Content="UPLOAD FOLDER" 
+                          Background="#3498DB" 
+                          Foreground="White" 
+                          BorderThickness="0"
+                          Click="UploadFolderButton_Click"
+                          HorizontalAlignment="Left"
+                          Margin="15,0,0,0">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                        <Button.Effect>
+                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                        </Button.Effect>
+                    </Button>
+                    
+                    <Button Grid.Column="2"
+                          Name="AutoUploadButton" 
+                          Width="180" 
+                          Height="45" 
+                          Content="AUTO UPLOAD" 
+                          Background="#9C27B0" 
+                          Foreground="White" 
+                          BorderThickness="0"
+                          Click="ShowAutoUploadConfig_Click"
+                          HorizontalAlignment="Left"
+                          Margin="15,0,0,0">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="6"/>
+                            </Style>
+                        </Button.Resources>
+                        <Button.Effect>
+                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                        </Button.Effect>
+                    </Button>
+                </Grid>
 
         <!-- CSV Data Preview -->
                 <Border Grid.Row="3" 
@@ -684,7 +757,7 @@
                     </Grid.RowDefinitions>
                     
                     <TextBlock Grid.Row="0" 
-                             Text="Container Name Requirements" 
+                             Text="Container Name Format" 
                              FontSize="22" 
                              FontWeight="Bold" 
                              Foreground="#2C3E50"
@@ -692,7 +765,7 @@
                     
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="0,0,0,20">
-                            <TextBlock Text="Valid Examples:" 
+                            <TextBlock Text="Format Example:" 
                                      FontWeight="SemiBold" 
                                      FontSize="16"
                                      Foreground="#2C3E50" 
@@ -704,13 +777,14 @@
                                    CornerRadius="4" 
                                    Padding="15"
                                    Margin="0,0,0,20">
-                                <TextBlock Foreground="#34495E"
+                                <TextBlock TextWrapping="Wrap" 
+                                         Foreground="#34495E"
                                          FontSize="14">
-                                    csv-files, mydata, container1, user-uploads, azureml
+                                    azureml,..
                                 </TextBlock>
                             </Border>
                             
-                            <TextBlock Text="Rules for container names:" 
+                            <TextBlock Text="Where to find it:" 
                                      FontWeight="SemiBold" 
                                      FontSize="16"
                                      Foreground="#2C3E50"
@@ -720,25 +794,25 @@
                                      Foreground="#34495E" 
                                      FontSize="14"
                                      Margin="0,0,0,10">
-                                <Run FontWeight="SemiBold">•</Run> Must be 3-63 characters long
+                                <Run FontWeight="SemiBold">1.</Run> Open Azure Portal (portal.azure.com)
                             </TextBlock>
                             <TextBlock TextWrapping="Wrap" 
                                      Foreground="#34495E" 
                                      FontSize="14"
                                      Margin="0,0,0,10">
-                                <Run FontWeight="SemiBold">•</Run> Must start with a letter or number
+                                <Run FontWeight="SemiBold">2.</Run> Navigate to your Storage Account
                             </TextBlock>
                             <TextBlock TextWrapping="Wrap" 
                                      Foreground="#34495E" 
                                      FontSize="14"
                                      Margin="0,0,0,10">
-                                <Run FontWeight="SemiBold">•</Run> Can only contain lowercase letters, numbers, and hyphens (-)
+                                <Run FontWeight="SemiBold">3.</Run> Click on "Containers" in the left menu
                             </TextBlock>
                             <TextBlock TextWrapping="Wrap" 
                                      Foreground="#34495E" 
                                      FontSize="14"
                                      Margin="0,0,0,10">
-                                <Run FontWeight="SemiBold">•</Run> No consecutive hyphens allowed
+                                <Run FontWeight="SemiBold">4.</Run> Select the container you want to use
                             </TextBlock>
                         </StackPanel>
                     </ScrollViewer>
@@ -752,13 +826,332 @@
                            Background="#3498DB"
                            Foreground="White"
                            BorderThickness="0"
-                           Click="CloseHelpPopup_Click">
+                           Click="CloseContainerNameHelpPopup_Click">
                         <Button.Resources>
                             <Style TargetType="Border">
                                 <Setter Property="CornerRadius" Value="4"/>
                             </Style>
                         </Button.Resources>
                     </Button>
+                </Grid>
+            </Border>
+            
+            <!-- Test Connection Popup -->
+            <Border x:Name="TestConnectionPopup" 
+                   Visibility="Collapsed"
+                   Background="White" 
+                   BorderBrush="#3498DB" 
+                   BorderThickness="1" 
+                   CornerRadius="6"
+                   Width="500"
+                   Height="280"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Panel.ZIndex="100">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="8" Direction="315" Opacity="0.4" BlurRadius="15" Color="#000000"/>
+                </Border.Effect>
+                <Grid Margin="25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                             Text="Test Connection Result" 
+                             FontSize="22" 
+                             FontWeight="Bold" 
+                             Foreground="#2C3E50"
+                             Margin="0,0,0,20"/>
+                    
+                    <Grid Grid.Row="1" Margin="0,0,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        
+                        <Border x:Name="StatusIconBorder" 
+                               Width="48" 
+                               Height="48" 
+                               Background="#E1F5FE" 
+                               CornerRadius="24">
+                            <TextBlock x:Name="StatusIcon" 
+                                     Text="&#xE10B;" 
+                                     FontFamily="Segoe MDL2 Assets" 
+                                     FontSize="24" 
+                                     Foreground="#03A9F4" 
+                                     HorizontalAlignment="Center" 
+                                     VerticalAlignment="Center"/>
+                        </Border>
+                        
+                        <TextBlock Grid.Column="1" 
+                                 x:Name="TestConnectionStatusMessage" 
+                                 Text="Đang kiểm tra kết nối..." 
+                                 FontSize="18" 
+                                 FontWeight="SemiBold" 
+                                 Foreground="#2C3E50" 
+                                 VerticalAlignment="Center" 
+                                 Margin="15,0,0,0"/>
+                    </Grid>
+                    
+                    <TextBlock Grid.Row="2" 
+                             x:Name="TestConnectionDetails" 
+                             Text="Vui lòng đợi trong giây lát..." 
+                             TextWrapping="Wrap" 
+                             Foreground="#34495E" 
+                             FontSize="14" 
+                             Margin="0,0,0,20"/>
+                    
+                    <ProgressBar Grid.Row="3" 
+                               x:Name="TestConnectionProgress" 
+                               Height="6" 
+                               Foreground="#03A9F4" 
+                               IsIndeterminate="True" 
+                               Background="#E1F5FE" 
+                               BorderThickness="0" 
+                               Margin="0,0,0,20"/>
+                    
+                    <Button Grid.Row="5" 
+                           Content="Đóng" 
+                           Width="120" 
+                           Height="40" 
+                           FontSize="14"
+                           HorizontalAlignment="Right"
+                           Background="#3498DB"
+                           Foreground="White"
+                           BorderThickness="0"
+                           Click="CloseTestConnectionPopup_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </Grid>
+            </Border>
+            
+            <!-- Auto Upload Configuration Popup -->
+            <Border x:Name="AutoUploadConfigPopup" 
+                   Visibility="Collapsed"
+                   Background="White" 
+                   BorderBrush="#9C27B0" 
+                   BorderThickness="1" 
+                   CornerRadius="6"
+                   Width="600"
+                   Height="400"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Panel.ZIndex="100">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="8" Direction="315" Opacity="0.4" BlurRadius="15" Color="#000000"/>
+                </Border.Effect>
+                <Grid Margin="25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                             Text="Cấu hình tự động upload" 
+                             FontSize="22" 
+                             FontWeight="Bold" 
+                             Foreground="#2C3E50"
+                             Margin="0,0,0,20"/>
+                    
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,20">
+                            <!-- Thư mục giám sát -->
+                            <TextBlock Text="Thư mục giám sát:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBox x:Name="FolderPathTextBox" 
+                                       IsReadOnly="True"
+                                       Height="35"
+                                       Background="#F9FAFB"
+                                       BorderBrush="#E6E9ED"
+                                       BorderThickness="1"
+                                       Padding="10,5"
+                                       VerticalContentAlignment="Center"/>
+                                
+                                <Button Grid.Column="1"
+                                      Content="Chọn thư mục" 
+                                      Margin="10,0,0,0"
+                                      Width="120"
+                                      Height="35"
+                                      Background="#3498DB"
+                                      Foreground="White"
+                                      BorderThickness="0"
+                                      Click="SelectFolderButton_Click">
+                                    <Button.Resources>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="4"/>
+                                        </Style>
+                                    </Button.Resources>
+                                </Button>
+                            </Grid>
+                            
+                            <!-- Thời gian kiểm tra -->
+                            <TextBlock Text="Khoảng thời gian kiểm tra:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBox x:Name="TimeIntervalTextBox" 
+                                       Text="5"
+                                       Height="35"
+                                       Background="#F9FAFB"
+                                       BorderBrush="#E6E9ED"
+                                       BorderThickness="1"
+                                       Padding="10,5"
+                                       VerticalContentAlignment="Center"/>
+                                
+                                <TextBlock Grid.Column="1"
+                                         Text="phút" 
+                                         Margin="10,0,0,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="#34495E"/>
+                                
+                                <TextBlock Grid.Column="2"
+                                         Text="(Thời gian tối thiểu: 1 phút)" 
+                                         Margin="20,0,0,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="#7F8C8D"
+                                         FontStyle="Italic"
+                                         FontSize="12"/>
+                            </Grid>
+                            
+                            <!-- Thời gian tự động dừng -->
+                            <TextBlock Text="Tự động dừng sau:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <TextBox x:Name="AutoStopDurationTextBox" 
+                                       Text="24"
+                                       Height="35"
+                                       Background="#F9FAFB"
+                                       BorderBrush="#E6E9ED"
+                                       BorderThickness="1"
+                                       Padding="10,5"
+                                       VerticalContentAlignment="Center"/>
+                                
+                                <TextBlock Grid.Column="1"
+                                         Text="giờ" 
+                                         Margin="10,0,0,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="#34495E"/>
+                                
+                                <TextBlock Grid.Column="2"
+                                         Text="(Để trống nếu không muốn tự động dừng)" 
+                                         Margin="20,0,0,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="#7F8C8D"
+                                         FontStyle="Italic"
+                                         FontSize="12"/>
+                            </Grid>
+                            
+                            <!-- Trạng thái -->
+                            <TextBlock Text="Trạng thái giám sát:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Grid Margin="0,0,0,20">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <Border Width="12" 
+                                       Height="12" 
+                                       Background="#C62828" 
+                                       CornerRadius="6"
+                                       VerticalAlignment="Center"/>
+                                
+                                <TextBlock Grid.Column="1"
+                                         x:Name="MonitoringStatusText"
+                                         Text="Đã dừng" 
+                                         Margin="10,0,0,0"
+                                         VerticalAlignment="Center"
+                                         Foreground="#C62828"
+                                         FontWeight="SemiBold"/>
+                            </Grid>
+                            
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,10,0,0">
+                                Tính năng này sẽ tự động kiểm tra thư mục đã chọn theo khoảng thời gian đã cài đặt và upload các file CSV mới lên Azure Storage. Chỉ những file mới (chưa được upload trước đó) sẽ được upload.
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    
+                    <StackPanel Grid.Row="2" 
+                              Orientation="Horizontal" 
+                              HorizontalAlignment="Right">
+                        <Button x:Name="StartMonitoringButton"
+                              Content="Bắt đầu giám sát" 
+                              Width="150" 
+                              Height="40" 
+                              FontSize="14"
+                              Background="#4CAF50"
+                              Foreground="White"
+                              BorderThickness="0"
+                              Click="StartMonitoringButton_Click">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="4"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                        
+                        <Button Content="Đóng" 
+                              Width="120" 
+                              Height="40" 
+                              FontSize="14"
+                              Margin="15,0,0,0"
+                              Background="#9E9E9E"
+                              Foreground="White"
+                              BorderThickness="0"
+                              Click="CloseAutoUploadConfigPopup_Click">
+                            <Button.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="4"/>
+                                </Style>
+                            </Button.Resources>
+                        </Button>
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
