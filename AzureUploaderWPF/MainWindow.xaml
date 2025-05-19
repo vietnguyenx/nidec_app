@@ -1,0 +1,766 @@
+﻿<Window x:Class="AzureUploaderWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Azure CSV Uploader"
+        Width="1400" Height="900"
+        ResizeMode="CanResize"
+        Background="#FFFFFF">
+    
+    <Window.Resources>
+        <!-- Animated button style for sidebar -->
+        <Style x:Key="NavButtonStyle" TargetType="RadioButton">
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="Margin" Value="0,4"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="Transparent" CornerRadius="6" Padding="20,0" Margin="8,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Selection indicator -->
+                                <Border x:Name="indicator" 
+                                        Width="4" 
+                                        Height="24" 
+                                        HorizontalAlignment="Left" 
+                                        CornerRadius="2" 
+                                        Background="Transparent" 
+                                        Margin="0,0,12,0"/>
+                                
+                                <!-- Icon placeholder -->
+                                <TextBlock x:Name="icon" 
+                                           Grid.Column="1"
+                                           Text="{TemplateBinding Tag}" 
+                                           FontFamily="Segoe MDL2 Assets"
+                                           VerticalAlignment="Center" 
+                                           Margin="0,0,12,0"
+                                           FontSize="16"
+                                           Foreground="{TemplateBinding Foreground}"/>
+                                
+                                <!-- Button text -->
+                                <ContentPresenter Grid.Column="2"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            </Grid>
+                        </Border>
+                        
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1A2530"/>
+                                <Setter TargetName="indicator" Property="Background" Value="#3498DB"/>
+                                <Setter TargetName="icon" Property="Foreground" Value="#3498DB"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1A2530"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="border" 
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0.6" To="1.0" Duration="0:0:0.2"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#14202E"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style for TextBox with placeholder -->
+        <Style x:Key="TextBoxWithPlaceholder" TargetType="TextBox">
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Background" Value="#F9FAFB"/>
+            <Setter Property="BorderBrush" Value="#E6E9ED"/>
+            <Setter Property="Foreground" Value="#34495E"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <Grid>
+                                <TextBlock x:Name="placeholder" 
+                                           Text="{TemplateBinding Tag}" 
+                                           Foreground="#BDBDBD" 
+                                           Margin="{TemplateBinding Padding}"
+                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                           Visibility="Collapsed"/>
+                                <ScrollViewer x:Name="PART_ContentHost" 
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="placeholder" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#3498DB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Style for help button -->
+        <Style x:Key="HelpButton" TargetType="Button">
+            <Setter Property="Width" Value="90"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background" Value="#EBF5FB"/>
+            <Setter Property="Foreground" Value="#3498DB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3498DB"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" 
+                                Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="4">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE897;" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#D6EAF8"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#AED6F1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Style for CheckBox -->
+        <Style x:Key="ModernCheckBox" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#34495E"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="checkBoxBorder" 
+                                    Width="18" 
+                                    Height="18" 
+                                    BorderThickness="1" 
+                                    BorderBrush="#BDC3C7" 
+                                    CornerRadius="3"
+                                    Background="#F9FAFB"
+                                    VerticalAlignment="Center">
+                                <Path x:Name="checkMark" 
+                                      Data="M 3,9 L 7,13 L 14,4" 
+                                      Stroke="#3498DB" 
+                                      StrokeThickness="2" 
+                                      Visibility="Collapsed"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" 
+                                              Margin="8,0,0,0" 
+                                              VerticalAlignment="Center" 
+                                              RecognizesAccessKey="True"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="checkBoxBorder" Property="Background" Value="#EBF5FB"/>
+                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#3498DB"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="checkBoxBorder" Property="BorderBrush" Value="#3498DB"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="265"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Professional Sidebar -->
+        <Grid x:Name="Sidebar">
+            <!-- Gradient Background -->
+            <Rectangle>
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#2C3E50" Offset="0.0"/>
+                        <GradientStop Color="#34495E" Offset="0.5"/>
+                        <GradientStop Color="#2C3E50" Offset="1.0"/>
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <!-- Shadow Effect -->
+            <Border Background="Transparent">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="4" Direction="0" Opacity="0.3" BlurRadius="10"/>
+                </Border.Effect>
+            </Border>
+
+            <!-- Content Container -->
+            <Grid Margin="0,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="120"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Logo Area with Subtle Animation -->
+                <Border Grid.Row="0" Background="#1A2530" CornerRadius="0,0,12,12">
+                    <Grid>
+                        <StackPanel VerticalAlignment="Center" x:Name="LogoPanel">
+                            <TextBlock Text="AZURE" FontSize="28" FontWeight="Black" Foreground="White" 
+                                       HorizontalAlignment="Center" Margin="0,10,0,0">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect ShadowDepth="1" Direction="330" Opacity="0.3" BlurRadius="2"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                            <TextBlock Text="UPLOADER" FontSize="18" FontWeight="SemiBold" Foreground="#3498DB" 
+                                       HorizontalAlignment="Center" Margin="0,2,0,0">
+                                <TextBlock.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                 From="0.8" To="1.0" Duration="0:0:1.5"
+                                                                 AutoReverse="True" RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </TextBlock.Triggers>
+                            </TextBlock>
+                            <Border Height="2" Background="#3498DB" Margin="50,15,50,0" CornerRadius="1" Opacity="0.7"/>
+                        </StackPanel>
+                        
+                        <!-- Toggle Button để thu nhỏ/mở rộng sidebar -->
+                        <Button x:Name="ToggleSidebarButton" 
+                                HorizontalAlignment="Right" 
+                                VerticalAlignment="Top"
+                                Margin="0,10,10,0"
+                                Width="30" 
+                                Height="30"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Click="ToggleSidebar_Click">
+                            <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" Foreground="White" FontSize="16"/>
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="15">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#1A2530"/>
+                                        </Trigger>
+                                        <Trigger Property="IsPressed" Value="True">
+                                            <Setter TargetName="border" Property="Background" Value="#14202E"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Navigation Area -->
+                <StackPanel Grid.Row="1" Margin="0,25,0,0" x:Name="NavigationPanel">
+                    <TextBlock Text="MANAGEMENT" Margin="24,5,0,15" FontSize="12" Foreground="#7F8C8D" FontWeight="SemiBold" x:Name="ManagementLabel"/>
+                    
+                    <RadioButton x:Name="UploadTabButton" 
+                                 Style="{StaticResource NavButtonStyle}"
+                                 Content="Upload File"
+                                 Tag="&#xE898;"
+                                 IsChecked="True"
+                                 Click="UploadTabButton_Click"
+                                 GroupName="NavMenu"/>
+                    
+                    <RadioButton x:Name="MonitorTabButton" 
+                                 Style="{StaticResource NavButtonStyle}"
+                                 Content="Error Monitor"
+                                 Tag="&#xE9D2;"
+                                 Click="MonitorTabButton_Click"
+                                 GroupName="NavMenu"/>
+                    
+                    <Border Height="1" Background="#3498DB" Margin="24,20,24,20" Opacity="0.2"/>
+                    
+                    <TextBlock Text="SETTINGS" Margin="24,5,0,15" FontSize="12" Foreground="#7F8C8D" FontWeight="SemiBold" x:Name="SettingsLabel"/>
+                    
+                    <RadioButton Style="{StaticResource NavButtonStyle}"
+                                 Content="Configuration"
+                                 Tag="&#xE713;"
+                                 GroupName="NavMenu"/>
+                    
+                    <RadioButton Style="{StaticResource NavButtonStyle}"
+                                 Content="User Profile"
+                                 Tag="&#xE77B;"
+                                 GroupName="NavMenu"/>
+                </StackPanel>
+
+                <!-- Footer Area -->
+                <Border Grid.Row="2" Background="#1A2530" Height="80" x:Name="FooterPanel">
+                    <Grid>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="AzureUploader v1.0" Foreground="#3498DB" FontSize="12" HorizontalAlignment="Center"/>
+                            <TextBlock Text="© 2024 FPTU HCM" Foreground="#3498DB" FontSize="11" Margin="0,4,0,0" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Main Content -->
+        <Grid Grid.Column="1" Margin="25">
+            <!-- Upload Content -->
+            <Grid x:Name="UploadContent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Menu Bar -->
+                <Menu Grid.Row="0" Background="Transparent">
+                    <MenuItem Header="File" Foreground="#2C3E50">
+                <MenuItem Header="Open CSV..." Command="{x:Static ApplicationCommands.Open}"/>
+                <Separator/>
+                <MenuItem Header="Exit" Click="ExitMenu_Click"/>
+            </MenuItem>
+                    <MenuItem Header="Settings" Foreground="#2C3E50">
+                <MenuItem Header="Theme..." Click="ThemeMenu_Click"/>
+            </MenuItem>
+                    <MenuItem Header="Help" Foreground="#2C3E50">
+                <MenuItem Header="Documentation" Click="DocsMenu_Click"/>
+                <MenuItem Header="About" Click="AboutMenu_Click"/>
+            </MenuItem>
+        </Menu>
+
+                <!-- Azure Storage Configuration -->
+                <Border Grid.Row="1" 
+                       Margin="0,20"
+                       Background="White"
+                       BorderBrush="#ECF0F1"
+                       BorderThickness="1"
+                       CornerRadius="8">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                    </Border.Effect>
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Azure Storage Configuration" 
+                                  FontSize="16" 
+                                  FontWeight="SemiBold" 
+                                  Foreground="#2C3E50"
+                                  Margin="0,0,0,15"/>
+
+                        <!-- Connection String Row -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Text="Connection String:" 
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center"
+                                     Foreground="#34495E"/>
+                            
+                            <TextBox Name="ConnectionStringTextBox" 
+                                   Grid.Column="1"
+                                   Style="{StaticResource TextBoxWithPlaceholder}"
+                                   Tag="Ex: DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=***;EndpointSuffix=core.windows.net"/>
+                            
+                            <Button Grid.Column="2" 
+                                   Content="Help" 
+                                   Margin="10,0,0,0"
+                                   Style="{StaticResource HelpButton}"
+                                   Click="ConnectionStringHelp_Click"/>
+                        </Grid>
+                        
+                        <!-- Container Name Row -->
+                        <Grid Grid.Row="2" Margin="0,15,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <TextBlock Text="Container Name:" 
+                                     Grid.Column="0"
+                                     VerticalAlignment="Center"
+                                     Foreground="#34495E"/>
+                            
+                            <TextBox Name="ContainerNameTextBox" 
+                                   Grid.Column="1"
+                                   Style="{StaticResource TextBoxWithPlaceholder}"
+                                   Tag="Ex: azureml,.."/>
+                            
+                            <Button Grid.Column="2" 
+                                   Content="Help" 
+                                   Margin="10,0,0,0"
+                                   Style="{StaticResource HelpButton}"
+                                   Click="ContainerNameHelp_Click"/>
+                        </Grid>
+                        
+                        <CheckBox Grid.Row="3" 
+                                 Name="RememberSettingsCheckBox" 
+                                 Content="Remember these settings for next time" 
+                                 Margin="130,15,0,0" 
+                                 Style="{StaticResource ModernCheckBox}"/>
+                    </Grid>
+                </Border>
+
+                <!-- Upload Button -->
+                <Button Grid.Row="2"
+                      Name="UploadButton" 
+                      Width="160" 
+                      Height="45" 
+                      Content="UPLOAD FILE" 
+                      Margin="0,5,0,25"
+                      Background="#2C3E50" 
+                      Foreground="White" 
+                      BorderThickness="0"
+                    Click="UploadButton_Click"
+                      HorizontalAlignment="Left">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                    <Button.Effect>
+                        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                    </Button.Effect>
+                </Button>
+
+        <!-- CSV Data Preview -->
+                <Border Grid.Row="3" 
+                       Background="White"
+                       BorderBrush="#ECF0F1"
+                       BorderThickness="1"
+                       CornerRadius="8"
+                       Margin="0,0,0,20">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                    </Border.Effect>
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="CSV Data Preview" 
+                                  FontSize="16" 
+                                  FontWeight="SemiBold" 
+                                  Foreground="#2C3E50"
+                                  Margin="0,0,0,15"/>
+                        
+                        <DataGrid Grid.Row="1"
+                                 Name="PreviewDataGrid" 
+                                 AutoGenerateColumns="True" 
+                                 IsReadOnly="True" 
+                                 Height="200"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 GridLinesVisibility="Horizontal"
+                                 HorizontalGridLinesBrush="#ECF0F1"
+                                 RowBackground="White"
+                                 AlternatingRowBackground="#F9FAFB">
+                            <DataGrid.Resources>
+                                <Style TargetType="{x:Type DataGridColumnHeader}">
+                                    <Setter Property="Background" Value="#F5F7FA"/>
+                                    <Setter Property="Foreground" Value="#2C3E50"/>
+                                    <Setter Property="Padding" Value="10,8"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGrid.Resources>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+        <!-- Log Output -->
+                <Border Grid.Row="4" 
+                       Background="White"
+                       BorderBrush="#ECF0F1"
+                       BorderThickness="1"
+                       CornerRadius="8"
+                       Margin="0,0,0,20">
+                    <Border.Effect>
+                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                    </Border.Effect>
+                    <Grid Margin="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Text="Log Output" 
+                                  FontSize="16" 
+                                  FontWeight="SemiBold" 
+                                  Foreground="#2C3E50"
+                                  Margin="0,0,0,15"/>
+                        
+                        <ListBox Name="LogListBox" 
+                                Grid.Row="1"
+                                Background="Transparent" 
+                                Foreground="#34495E" 
+                                BorderThickness="0"/>
+                    </Grid>
+                </Border>
+
+        <!-- Footer -->
+                <TextBlock Grid.Row="5" 
+                          Text="This application is the property of the ITS Department - FPTU HCM. All rights reserved."
+                          FontSize="11" 
+                          FontStyle="Italic" 
+                          Foreground="#7F8C8D"
+                          HorizontalAlignment="Center"/>
+            </Grid>
+
+            <!-- Monitor Content -->
+            <WebBrowser x:Name="MonitorContent" 
+                       Visibility="Collapsed"
+                       Source="https://nidec-board-fthccdafgja6fveq.eastus-01.azurewebsites.net/Dashboard"/>
+            
+            <!-- Help Popups -->
+            <Border x:Name="ConnectionStringHelpPopup" 
+                   Visibility="Collapsed"
+                   Background="White" 
+                   BorderBrush="#3498DB" 
+                   BorderThickness="1" 
+                   CornerRadius="6"
+                   Width="600"
+                   Height="380"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Panel.ZIndex="100">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="8" Direction="315" Opacity="0.4" BlurRadius="15" Color="#000000"/>
+                </Border.Effect>
+                <Grid Margin="25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                             Text="Connection String Format" 
+                             FontSize="22" 
+                             FontWeight="Bold" 
+                             Foreground="#2C3E50"
+                             Margin="0,0,0,20"/>
+                    
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="Format Example:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Border Background="#F9FAFB" 
+                                   BorderBrush="#E6E9ED" 
+                                   BorderThickness="1" 
+                                   CornerRadius="4" 
+                                   Padding="15"
+                                   Margin="0,0,0,20">
+                                <TextBlock TextWrapping="Wrap" 
+                                         Foreground="#34495E"
+                                         FontSize="14">
+                                    DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=0123456789abcdefghijklmnopqrstuvwxyz;EndpointSuffix=core.windows.net
+                                </TextBlock>
+                            </Border>
+                            
+                            <TextBlock Text="Where to find it:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50"
+                                     Margin="0,0,0,8"/>
+                            
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">1.</Run> Open Azure Portal (portal.azure.com)
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">2.</Run> Navigate to your Storage Account
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">3.</Run> Click on "Access keys" in the left menu
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">4.</Run> Copy the connection string for Key1 or Key2
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    
+                    <Button Grid.Row="2" 
+                           Content="Close" 
+                           Width="120" 
+                           Height="40" 
+                           FontSize="14"
+                           HorizontalAlignment="Right"
+                           Background="#3498DB"
+                           Foreground="White"
+                           BorderThickness="0"
+                           Click="CloseHelpPopup_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </Grid>
+            </Border>
+            
+            <Border x:Name="ContainerNameHelpPopup" 
+                   Visibility="Collapsed"
+                   Background="White" 
+                   BorderBrush="#3498DB" 
+                   BorderThickness="1" 
+                   CornerRadius="6"
+                   Width="600"
+                   Height="380"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Panel.ZIndex="100">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="8" Direction="315" Opacity="0.4" BlurRadius="15" Color="#000000"/>
+                </Border.Effect>
+                <Grid Margin="25">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <TextBlock Grid.Row="0" 
+                             Text="Container Name Requirements" 
+                             FontSize="22" 
+                             FontWeight="Bold" 
+                             Foreground="#2C3E50"
+                             Margin="0,0,0,20"/>
+                    
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="Valid Examples:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50" 
+                                     Margin="0,0,0,8"/>
+                            
+                            <Border Background="#F9FAFB" 
+                                   BorderBrush="#E6E9ED" 
+                                   BorderThickness="1" 
+                                   CornerRadius="4" 
+                                   Padding="15"
+                                   Margin="0,0,0,20">
+                                <TextBlock Foreground="#34495E"
+                                         FontSize="14">
+                                    csv-files, mydata, container1, user-uploads, azureml
+                                </TextBlock>
+                            </Border>
+                            
+                            <TextBlock Text="Rules for container names:" 
+                                     FontWeight="SemiBold" 
+                                     FontSize="16"
+                                     Foreground="#2C3E50"
+                                     Margin="0,0,0,8"/>
+                            
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">•</Run> Must be 3-63 characters long
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">•</Run> Must start with a letter or number
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">•</Run> Can only contain lowercase letters, numbers, and hyphens (-)
+                            </TextBlock>
+                            <TextBlock TextWrapping="Wrap" 
+                                     Foreground="#34495E" 
+                                     FontSize="14"
+                                     Margin="0,0,0,10">
+                                <Run FontWeight="SemiBold">•</Run> No consecutive hyphens allowed
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+                    
+                    <Button Grid.Row="2" 
+                           Content="Close" 
+                           Width="120" 
+                           Height="40" 
+                           FontSize="14"
+                           HorizontalAlignment="Right"
+                           Background="#3498DB"
+                           Foreground="White"
+                           BorderThickness="0"
+                           Click="CloseHelpPopup_Click">
+                        <Button.Resources>
+                            <Style TargetType="Border">
+                                <Setter Property="CornerRadius" Value="4"/>
+                            </Style>
+                        </Button.Resources>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

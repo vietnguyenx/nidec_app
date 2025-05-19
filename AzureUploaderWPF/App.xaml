@@ -1,0 +1,9 @@
+﻿<Application x:Class="AzureUploaderWPF.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AzureUploaderWPF"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <!-- Không sử dụng Material Design -->
+    </Application.Resources>
+</Application>
