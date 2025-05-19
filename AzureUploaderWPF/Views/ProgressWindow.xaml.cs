@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 
-namespace AzureUploaderWPF
+namespace AzureUploaderWPF.Views
 {
     /// <summary>
     /// Interaction logic for ProgressWindow.xaml

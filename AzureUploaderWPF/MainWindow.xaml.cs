@@ -29,6 +29,7 @@ using WpfColorConverter = System.Windows.Media.ColorConverter;
 using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
 using System.Threading;
 using System.Collections.Concurrent;
+using AzureUploaderWPF.Views;
 
 namespace AzureUploaderWPF
 {
