@@ -9,6 +9,7 @@
 *.sln.docstates
 *.v17
 *.v17.*
+documentLayout.json
 
 # Build results
 [Dd]ebug/
