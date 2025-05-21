@@ -30,6 +30,7 @@ using WpfHorizontalAlignment = System.Windows.HorizontalAlignment;
 using System.Threading;
 using System.Collections.Concurrent;
 using AzureUploaderWPF.Views;
+using Microsoft.Web.WebView2.Wpf;
 
 namespace AzureUploaderWPF
 {
@@ -135,13 +136,7 @@ namespace AzureUploaderWPF
 
         public MainWindow()
         {
-            // Cấu hình WebBrowser để sử dụng phiên bản IE mới nhất và tắt thông báo lỗi script
-            SetWebBrowserFeatures();
-            
             InitializeComponent();
-            
-            // Đăng ký sự kiện cho WebBrowser để tắt thông báo lỗi script
-            ConfigureWebBrowser();
             
             // Mặc định hiển thị tab Upload
             ShowUploadTab();
@@ -154,47 +149,53 @@ namespace AzureUploaderWPF
             
             // Tải danh sách các file đã upload trước đó (nếu có)
             LoadUploadedFilesLog();
+
+            // Khởi tạo WebView2
+            InitializeWebView2();
+        }
+
+        private async void InitializeWebView2()
+        {
+            try
+            {
+                await MonitorContent.EnsureCoreWebView2Async();
+                
+                // Cấu hình WebView2
+                MonitorContent.CoreWebView2.Settings.IsScriptEnabled = true;
+                MonitorContent.CoreWebView2.Settings.AreDevToolsEnabled = true;
+                MonitorContent.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                
+                // Đăng ký sự kiện
+                MonitorContent.NavigationCompleted += WebView2_NavigationCompleted;
+                
+                // Tải trang web
+                MonitorContent.Source = new Uri("https://nidec-board-fthccdafgja6fveq.eastus-01.azurewebsites.net/Dashboard");
+            }
+            catch (Exception ex)
+            {
+                AddLogMsg($"Lỗi khởi tạo WebView2: {ex.Message}");
+            }
         }
 
         #region WebBrowser Configuration
 
         /// <summary>
-        /// Tắt thông báo lỗi JavaScript và xử lý sự kiện cho WebBrowser
+        /// Cấu hình WebView2
         /// </summary>
         private void ConfigureWebBrowser()
         {
-            // Đăng ký sự kiện cho WebBrowser
-            MonitorContent.Navigated += WebBrowser_Navigated;
-            MonitorContent.LoadCompleted += WebBrowser_LoadCompleted;
+            // Đăng ký sự kiện cho WebView2
+            MonitorContent.NavigationCompleted += WebView2_NavigationCompleted;
         }
 
-        private void WebBrowser_Navigated(object sender, NavigationEventArgs e)
+        private async void WebView2_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
         {
-            // Truy cập vào đối tượng ActiveX và tắt các thông báo lỗi script
-            dynamic activeX = MonitorContent.GetType().InvokeMember("ActiveXInstance",
-                BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
-                null, MonitorContent, null);
-
-            if (activeX != null)
-            {
-                activeX.Silent = true;
-            }
-        }
-
-        private void WebBrowser_LoadCompleted(object sender, NavigationEventArgs e)
-        {
-            // Truy cập document object để tùy chỉnh thêm nếu cần
             try
             {
-                dynamic doc = MonitorContent.Document;
-                if (doc != null)
-                {
-                    // Thêm xử lý sự kiện window.onerror để chặn lỗi script nếu cần
-                    MonitorContent.InvokeScript("eval", new object[]
-                    {
-                        "window.onerror = function(message, url, line) { return true; };"
-                    });
-                }
+                // Thêm xử lý sự kiện window.onerror để chặn lỗi script nếu cần
+                await MonitorContent.CoreWebView2.ExecuteScriptAsync(
+                    "window.onerror = function(message, url, line) { return true; };"
+                );
             }
             catch { /* Bỏ qua lỗi nếu có */ }
         }
@@ -237,7 +238,6 @@ namespace AzureUploaderWPF
                 }
             }
 
-            // Giá trị Emulation cho IE từ 7-11
             switch (browserVersion)
             {
                 case 7: return 7000;   // IE7
@@ -255,7 +255,6 @@ namespace AzureUploaderWPF
                 @"Software\Microsoft\Internet Explorer\Main\FeatureControl\" + feature,
                 RegistryKeyPermissionCheck.ReadWriteSubTree))
             {
-                // Thêm tên ứng dụng hiện tại vào registry
                 key?.SetValue(Path.GetFileName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName), value, RegistryValueKind.DWord);
             }
         }
@@ -264,15 +263,13 @@ namespace AzureUploaderWPF
 
         private void MainWindow_KeyDown(object sender, WpfKeyEventArgs e)
         {
-            // Kiểm tra nếu phím nhấn là Esc
             if (e.Key == Key.Escape)
             {
-                // Kiểm tra nếu có popup nào đang hiển thị, thì đóng lại
                 if (ConnectionStringHelpPopup.Visibility == Visibility.Visible || 
                     ContainerNameHelpPopup.Visibility == Visibility.Visible)
                 {
                     CloseHelpPopup_Click(null, null);
-                    e.Handled = true; // Đánh dấu sự kiện đã được xử lý
+                    e.Handled = true; 
                 }
             }
         }
@@ -329,13 +326,13 @@ namespace AzureUploaderWPF
                 // Kiểm tra các trường nhập liệu
                 if (string.IsNullOrWhiteSpace(ConnectionStringTextBox.Text))
                 {
-                    ShowConnectionError("Connection string không được để trống!");
+                    ShowConnectionError("Connection string cannot be empty!");
                     return;
                 }
                 
                 if (string.IsNullOrWhiteSpace(ContainerNameTextBox.Text))
                 {
-                    ShowConnectionError("Container name không được để trống!");
+                    ShowConnectionError("Container name cannot be empty!");
                     return;
                 }
                 
@@ -359,31 +356,31 @@ namespace AzureUploaderWPF
                             await containerClient.GetPropertiesAsync();
                             
                             // Nếu không có lỗi, kết nối thành công
-                            ShowConnectionSuccess($"Kết nối thành công đến container '{ContainerNameTextBox.Text}'.");
-                            AddLogMsg("Test connection thành công.");
+                            ShowConnectionSuccess($"Connection successful to container '{ContainerNameTextBox.Text}'.");
+                            AddLogMsg("Test connection successful.");
                         }
                         catch (Exception ex)
                         {
                             // Có lỗi khi truy cập properties, có thể là vấn đề quyền
-                            ShowConnectionError($"Container tồn tại nhưng không có quyền truy cập: {ex.Message}");
+                            ShowConnectionError($"Container exists but no access: {ex.Message}");
                         }
                     }
                     else
                     {
                         // Container không tồn tại, báo lỗi
-                        ShowConnectionError($"Container '{ContainerNameTextBox.Text}' không tồn tại. Vui lòng kiểm tra lại tên container.");
-                        AddLogMsg($"Container '{ContainerNameTextBox.Text}' không tồn tại.");
+                        ShowConnectionError($"Container '{ContainerNameTextBox.Text}' does not exist. Please check the container name.");
+                        AddLogMsg($"Container '{ContainerNameTextBox.Text}' does not exist.");
                     }
                 }
                 catch (Exception ex)
                 {
                     // Lỗi xác thực hoặc kết nối
-                    ShowConnectionError($"Lỗi kết nối: {ex.Message}");
+                    ShowConnectionError($"Connection error: {ex.Message}");
                 }
             }
             catch (Exception ex)
             {
-                ShowConnectionError($"Có lỗi xảy ra: {ex.Message}");
+                ShowConnectionError($"An error occurred: {ex.Message}");
             }
         }
         
@@ -400,10 +397,10 @@ namespace AzureUploaderWPF
             StatusIconBorder.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#E1F5FE"));
             StatusIcon.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#03A9F4"));
             
-            TestConnectionStatusMessage.Text = "Đang kiểm tra kết nối...";
+            TestConnectionStatusMessage.Text = "Checking connection...";
             TestConnectionStatusMessage.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#2C3E50"));
             
-            TestConnectionDetails.Text = "Vui lòng đợi trong giây lát...";
+            TestConnectionDetails.Text = "Please wait for a moment...";
             
             // Hiển thị thanh tiến trình
             TestConnectionProgress.IsIndeterminate = true;
@@ -420,7 +417,7 @@ namespace AzureUploaderWPF
             StatusIconBorder.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#EDF7ED"));
             StatusIcon.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#4CAF50"));
             
-            TestConnectionStatusMessage.Text = "Kết nối thành công!";
+            TestConnectionStatusMessage.Text = "Connection successful!";
             TestConnectionStatusMessage.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#2E7D32"));
             
             TestConnectionDetails.Text = details;
@@ -440,7 +437,7 @@ namespace AzureUploaderWPF
             StatusIconBorder.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#FEECEB"));
             StatusIcon.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#E53935"));
             
-            TestConnectionStatusMessage.Text = "Kết nối thất bại!";
+            TestConnectionStatusMessage.Text = "Connection failed!";
             TestConnectionStatusMessage.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#C62828"));
             
             TestConnectionDetails.Text = errorMessage;
@@ -450,16 +447,13 @@ namespace AzureUploaderWPF
             TestConnectionProgress.Visibility = Visibility.Collapsed;
             
             // Thêm log
-            AddLogMsg("Test connection thất bại: " + errorMessage);
+            AddLogMsg("Test connection failed: " + errorMessage);
         }
 
         #endregion
 
         #region Auto Upload Feature
 
-        /// <summary>
-        /// Tải danh sách các file đã được upload từ log
-        /// </summary>
         private void LoadUploadedFilesLog()
         {
             try
@@ -478,18 +472,15 @@ namespace AzureUploaderWPF
                             uploadedFiles.TryAdd(filePath, timestamp);
                         }
                     }
-                    AddLogMsg($"Đã tải {uploadedFiles.Count} file từ lịch sử upload.");
+                    AddLogMsg($"Loaded {uploadedFiles.Count} files from upload history.");
                 }
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi khi tải lịch sử upload: {ex.Message}");
+                AddLogMsg($"Error loading upload history: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Lưu danh sách các file đã được upload vào log
-        /// </summary>
         private void SaveUploadedFilesLog()
         {
             try
@@ -506,43 +497,32 @@ namespace AzureUploaderWPF
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi khi lưu lịch sử upload: {ex.Message}");
+                AddLogMsg($"Error saving upload history: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// Hiển thị cửa sổ cấu hình giám sát tự động
-        /// </summary>
         private void ShowAutoUploadConfig_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(ConnectionStringTextBox.Text) || string.IsNullOrWhiteSpace(ContainerNameTextBox.Text))
             {
-                WpfMessageBox.Show("Vui lòng nhập đầy đủ thông tin kết nối Azure Storage trước khi cấu hình tự động upload!", 
-                    "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                WpfMessageBox.Show("Please enter complete Azure Storage connection information!", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             
             AutoUploadConfigPopup.Visibility = Visibility.Visible;
             
-            // Nếu đang giám sát, cập nhật UI
             if (isMonitoring)
             {
                 UpdateAutoUploadConfigUI();
             }
         }
 
-        /// <summary>
-        /// Cập nhật giao diện cửa sổ cấu hình giám sát tự động
-        /// </summary>
         private void UpdateAutoUploadConfigUI()
         {
-            // Cập nhật thông tin thư mục đang giám sát
             FolderPathTextBox.Text = monitorFolderPath;
             
-            // Cập nhật interval
             TimeIntervalTextBox.Text = checkIntervalMinutes.ToString();
             
-            // Cập nhật thời gian tự động dừng
             if (autoStopTime.HasValue && isMonitoring)
             {
                 TimeSpan remainingTime = autoStopTime.Value - DateTime.Now;
@@ -557,64 +537,67 @@ namespace AzureUploaderWPF
                 }
             }
             
-            // Cập nhật trạng thái giám sát
             if (isMonitoring)
             {
-                MonitoringStatusText.Text = "Đang giám sát";
-                MonitoringStatusText.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#2E7D32"));
-                StartMonitoringButton.Content = "Dừng giám sát";
+                MonitoringStatusText.Text = "Monitoring";
+                MonitoringStatusText.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#4CAF50"));
+                StartMonitoringButton.Visibility = Visibility.Collapsed;
+                StopMonitoringButton.Visibility = Visibility.Visible;
                 
-                // Hiển thị thời gian còn lại nếu có
+                var statusDot = ((Grid)MonitoringStatusText.Parent).Children[0] as Border;
+                if (statusDot != null)
+                {
+                    statusDot.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#4CAF50"));
+                }
+                
                 if (autoStopTime.HasValue)
                 {
                     TimeSpan remainingTime = autoStopTime.Value - DateTime.Now;
                     if (remainingTime.TotalMinutes > 0)
                     {
-                        MonitoringStatusText.Text = $"Đang giám sát (còn {FormatTimeSpan(remainingTime)})";
+                        MonitoringStatusText.Text = $"Monitoring (remain {FormatTimeSpan(remainingTime)})";
                     }
                 }
             }
             else
             {
-                MonitoringStatusText.Text = "Đã dừng";
+                MonitoringStatusText.Text = "Stopped";
                 MonitoringStatusText.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#C62828"));
-                StartMonitoringButton.Content = "Bắt đầu giám sát";
+                StartMonitoringButton.Visibility = Visibility.Visible;
+                StopMonitoringButton.Visibility = Visibility.Collapsed;
+                
+                var statusDot = ((Grid)MonitoringStatusText.Parent).Children[0] as Border;
+                if (statusDot != null)
+                {
+                    statusDot.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#C62828"));
+                }
             }
         }
 
-        /// <summary>
-        /// Định dạng TimeSpan thành chuỗi dễ đọc
-        /// </summary>
         private string FormatTimeSpan(TimeSpan ts)
         {
             if (ts.TotalHours >= 1)
             {
-                return $"{Math.Floor(ts.TotalHours):0} giờ {ts.Minutes} phút";
+                return $"{Math.Floor(ts.TotalHours):0} hours {ts.Minutes} minutes";
             }
             else
             {
-                return $"{ts.Minutes} phút";
+                return $"{ts.Minutes} minutes";
             }
         }
 
-        /// <summary>
-        /// Đóng cửa sổ cấu hình giám sát tự động
-        /// </summary>
         private void CloseAutoUploadConfigPopup_Click(object sender, RoutedEventArgs e)
         {
             AutoUploadConfigPopup.Visibility = Visibility.Collapsed;
         }
 
-        /// <summary>
-        /// Xử lý sự kiện chọn thư mục để giám sát
-        /// </summary>
         private void SelectFolderButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 var folderBrowserDialog = new WinForms.FolderBrowserDialog
                 {
-                    Description = "Chọn thư mục để giám sát các file CSV",
+                    Description = "Select folder containing CSV files",
                     ShowNewFolderButton = false
                 };
 
@@ -624,166 +607,153 @@ namespace AzureUploaderWPF
                     FolderPathTextBox.Text = selectedFolder;
                     monitorFolderPath = selectedFolder;
                     
-                    // Kiểm tra xem trong thư mục có file CSV không
                     string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv");
-                    AddLogMsg($"Đã chọn thư mục giám sát: {selectedFolder}. Tìm thấy {csvFiles.Length} file CSV.");
+                    AddLogMsg($"Selected monitoring folder: {selectedFolder}. Found {csvFiles.Length} CSV files.");
                 }
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi khi chọn thư mục: {ex.Message}");
-                WpfMessageBox.Show($"Lỗi khi chọn thư mục: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                AddLogMsg($"Error selecting folder: {ex.Message}");
+                WpfMessageBox.Show($"Error selecting folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        /// <summary>
-        /// Xử lý sự kiện bật/tắt giám sát tự động
-        /// </summary>
-        private async void StartMonitoringButton_Click(object sender, RoutedEventArgs e)
+        private void StartMonitoringButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (isMonitoring)
+                if (string.IsNullOrEmpty(FolderPathTextBox.Text))
                 {
-                    // Dừng giám sát
-                    StopMonitoring();
-                    AddLogMsg("Đã dừng giám sát tự động.");
+                    WpfMessageBox.Show("Please select the folder to monitor!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
-                else
+
+                if (!int.TryParse(TimeIntervalTextBox.Text, out int interval) || interval < 1)
                 {
-                    // Kiểm tra thông tin đầu vào
-                    if (string.IsNullOrWhiteSpace(monitorFolderPath) || !Directory.Exists(monitorFolderPath))
-                    {
-                        WpfMessageBox.Show("Vui lòng chọn thư mục hợp lệ để giám sát!", 
-                            "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-                    
-                    // Kiểm tra khoảng thời gian
-                    if (!int.TryParse(TimeIntervalTextBox.Text, out int minutes) || minutes < 1)
-                    {
-                        WpfMessageBox.Show("Khoảng thời gian kiểm tra phải là số phút hợp lệ (lớn hơn 0)!", 
-                            "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-                    
-                    // Kiểm tra kết nối đến Azure
-                    try
-                    {
-                        var containerClient = new BlobContainerClient(
-                            ConnectionStringTextBox.Text, 
-                            ContainerNameTextBox.Text);
-                        
-                        bool exists = await containerClient.ExistsAsync();
-                        if (!exists)
-                        {
-                            WpfMessageBox.Show($"Container '{ContainerNameTextBox.Text}' không tồn tại. Vui lòng kiểm tra lại!", 
-                                "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                            return;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        WpfMessageBox.Show($"Lỗi kết nối đến Azure: {ex.Message}", 
-                            "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                        return;
-                    }
-                    
-                    // Lưu cấu hình
-                    checkIntervalMinutes = minutes;
-                    
-                    // Bắt đầu giám sát
-                    StartMonitoring();
-                    AddLogMsg($"Bắt đầu giám sát tự động thư mục: {monitorFolderPath}. Kiểm tra mỗi {checkIntervalMinutes} phút.");
+                    WpfMessageBox.Show("The test interval must be greater than or equal to 1 minute!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
+
+                checkIntervalMinutes = interval;
+                monitorFolderPath = FolderPathTextBox.Text;
+
+                StartMonitoring();
+
+                StartMonitoringButton.Visibility = Visibility.Collapsed;
+                StopMonitoringButton.Visibility = Visibility.Visible;
+                MonitoringStatusText.Text = "Monitoring";
+                MonitoringStatusText.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#4CAF50"));
                 
-                // Cập nhật UI
-                UpdateAutoUploadConfigUI();
+                var statusDot = ((Grid)MonitoringStatusText.Parent).Children[0] as Border;
+                if (statusDot != null)
+                {
+                    statusDot.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#4CAF50"));
+                }
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi: {ex.Message}");
-                WpfMessageBox.Show($"Lỗi: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                WpfMessageBox.Show($"Error starting monitoring: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        /// <summary>
-        /// Bắt đầu giám sát tự động
-        /// </summary>
+        private void StopMonitoringButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StopMonitoring();
+
+                StartMonitoringButton.Visibility = Visibility.Visible;
+                StopMonitoringButton.Visibility = Visibility.Collapsed;
+                MonitoringStatusText.Text = "Đã dừng";
+                MonitoringStatusText.Foreground = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#C62828"));
+                
+                var statusDot = ((Grid)MonitoringStatusText.Parent).Children[0] as Border;
+                if (statusDot != null)
+                {
+                    statusDot.Background = new SolidColorBrush((MediaColor)WpfColorConverter.ConvertFromString("#C62828"));
+                }
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"Error when stopping monitoring: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         private void StartMonitoring()
         {
-            // Khởi tạo timer
-            int intervalMs = checkIntervalMinutes * 60 * 1000; // Chuyển phút sang mili giây
-            autoUploadTimer = new System.Threading.Timer(AutoUploadTimerCallback, null, 0, intervalMs);
-            
-            // Thiết lập thời gian tự động dừng (nếu có)
-            SetupAutoStop();
-            
-            // Cập nhật trạng thái
+            if (isMonitoring) return;
+
             isMonitoring = true;
-            
-            // Lưu cấu hình
-            SaveSettings();
+            autoUploadTimer = new System.Threading.Timer(AutoUploadTimerCallback, null, 0, checkIntervalMinutes * 60 * 1000);
+
+            if (!string.IsNullOrEmpty(AutoStopDurationTextBox.Text) && 
+                int.TryParse(AutoStopDurationTextBox.Text, out int hours) && 
+                hours > 0)
+            {
+                SetupAutoStop();
+            }
+
+            AddLogMsg($"Start folder monitoring: {monitorFolderPath}");
+            AddLogMsg($"Test period: {checkIntervalMinutes} minutes");
         }
-        
-        /// <summary>
-        /// Thiết lập thời gian tự động dừng giám sát
-        /// </summary>
+
+        private void StopMonitoring()
+        {
+            if (!isMonitoring) return;
+
+            isMonitoring = false;
+            autoUploadTimer?.Dispose();
+            autoUploadTimer = null;
+
+            autoStopTimer?.Dispose();
+            autoStopTimer = null;
+            autoStopTime = null;
+
+            AddLogMsg("Monitoring stopped");
+        }
+
         private void SetupAutoStop()
         {
-            // Hủy timer cũ nếu có
             if (autoStopTimer != null)
             {
                 autoStopTimer.Dispose();
                 autoStopTimer = null;
             }
             
-            // Reset thời gian tự động dừng
             autoStopTime = null;
             
-            // Đọc giá trị từ textbox
             int autoStopHours;
             if (!string.IsNullOrWhiteSpace(AutoStopDurationTextBox.Text) && 
                 int.TryParse(AutoStopDurationTextBox.Text, out autoStopHours) && 
                 autoStopHours > 0)
             {
-                // Tính thời điểm dừng
                 autoStopTime = DateTime.Now.AddHours(autoStopHours);
                 
-                // Tạo timer để tự động dừng
-                // Chuyển giờ sang milliseconds
                 long delayMs = (long)autoStopHours * 60 * 60 * 1000;
                 
-                // Khởi tạo timer với callback một lần
                 autoStopTimer = new System.Threading.Timer(AutoStopTimerCallback, null, delayMs, Timeout.Infinite);
                 
-                AddLogMsg($"Giám sát sẽ tự động dừng sau {autoStopHours} giờ (vào lúc {autoStopTime.Value.ToString("HH:mm:ss dd/MM/yyyy")})");
+                AddLogMsg($"Monitoring will automatically stop after {autoStopHours} hours (at {autoStopTime.Value.ToString("HH:mm:ss dd/MM/yyyy")})");
             }
             else
             {
-                AddLogMsg("Giám sát sẽ tiếp tục cho đến khi dừng thủ công.");
+                AddLogMsg("Monitoring will continue until manual stop.");
             }
         }
         
-        /// <summary>
-        /// Callback khi timer tự động dừng kích hoạt
-        /// </summary>
         private void AutoStopTimerCallback(object state)
         {
             try
             {
-                // Dừng giám sát từ thread UI
                 Dispatcher.InvokeAsync(() => 
                 {
                     if (isMonitoring)
                     {
-                        AddLogMsg($"Tự động dừng giám sát theo lịch đã cài đặt sau {AutoStopDurationTextBox.Text} giờ.");
+                        AddLogMsg($"Auto monitoring stopped due to scheduled time.");
                         StopMonitoring();
                         UpdateAutoUploadConfigUI();
                         
-                        // Thông báo cho người dùng
-                        WpfMessageBox.Show("Giám sát tự động đã dừng theo thời gian đã cài đặt!", 
-                            "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        WpfMessageBox.Show("Auto monitoring stopped due to scheduled time.", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 });
             }
@@ -791,12 +761,11 @@ namespace AzureUploaderWPF
             {
                 Dispatcher.InvokeAsync(() => 
                 {
-                    AddLogMsg($"Lỗi khi dừng tự động: {ex.Message}");
+                    AddLogMsg($"Error during auto stop: {ex.Message}");
                 });
             }
             finally
             {
-                // Đảm bảo timer được giải phóng
                 if (autoStopTimer != null)
                 {
                     autoStopTimer.Dispose();
@@ -805,83 +774,47 @@ namespace AzureUploaderWPF
             }
         }
 
-        /// <summary>
-        /// Dừng giám sát tự động
-        /// </summary>
-        private void StopMonitoring()
-        {
-            // Dừng timer
-            if (autoUploadTimer != null)
-            {
-                autoUploadTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                autoUploadTimer.Dispose();
-                autoUploadTimer = null;
-            }
-            
-            // Dừng auto stop timer nếu có
-            if (autoStopTimer != null)
-            {
-                autoStopTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                autoStopTimer.Dispose();
-                autoStopTimer = null;
-            }
-            
-            // Xóa thời gian dừng
-            autoStopTime = null;
-            
-            // Cập nhật trạng thái
-            isMonitoring = false;
-            
-            // Lưu danh sách các file đã upload
-            SaveUploadedFilesLog();
-        }
-
-        /// <summary>
-        /// Callback được gọi mỗi khi timer kích hoạt
-        /// </summary>
         private async void AutoUploadTimerCallback(object state)
         {
             try
             {
-                // Kiểm tra xem thư mục còn tồn tại không
                 if (!Directory.Exists(monitorFolderPath))
                 {
-                    // Sử dụng Dispatcher để ghi log vì nó truy cập UI
                     await Dispatcher.InvokeAsync(() => 
                     {
-                        AddLogMsg($"Thư mục giám sát không còn tồn tại: {monitorFolderPath}");
+                        AddLogMsg($"Monitoring folder no longer exists: {monitorFolderPath}");
                     });
                     
                     StopMonitoring();
                     
-                    // Cập nhật UI từ thread UI
                     await Dispatcher.InvokeAsync(() => 
                     {
                         UpdateAutoUploadConfigUI();
-                        WpfMessageBox.Show("Thư mục giám sát không còn tồn tại. Đã dừng giám sát tự động!", 
-                            "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                        WpfMessageBox.Show("Monitoring folder no longer exists. Auto monitoring stopped!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
                     });
                     
                     return;
                 }
                 
-                // Tìm tất cả các file CSV trong thư mục
                 string[] csvFiles = Directory.GetFiles(monitorFolderPath, "*.csv");
                 
                 if (csvFiles.Length == 0)
                 {
                     await Dispatcher.InvokeAsync(() => 
                     {
-                        AddLogMsg("Kiểm tra tự động: Không tìm thấy file CSV nào.");
+                        AddLogMsg("Auto check: No CSV files found.");
                     });
                     return;
                 }
                 
-                // Tìm các file mới (chưa được upload)
+                await Dispatcher.InvokeAsync(() => 
+                {
+                    AddLogMsg($"Auto check: Found {csvFiles.Length} CSV files in folder.");
+                });
+                
                 List<string> newFiles = new List<string>();
                 foreach (string filePath in csvFiles)
                 {
-                    // Kiểm tra xem file đã được upload chưa
                     if (!uploadedFiles.ContainsKey(filePath))
                     {
                         newFiles.Add(filePath);
@@ -892,17 +825,16 @@ namespace AzureUploaderWPF
                 {
                     await Dispatcher.InvokeAsync(() => 
                     {
-                        AddLogMsg("Kiểm tra tự động: Không có file CSV mới.");
+                        AddLogMsg("Auto check: No new CSV files found.");
                     });
                     return;
                 }
                 
                 await Dispatcher.InvokeAsync(() => 
                 {
-                    AddLogMsg($"Tìm thấy {newFiles.Count} file CSV mới. Bắt đầu upload tự động...");
+                    AddLogMsg($"Auto check: Found {newFiles.Count} new CSV files. Starting auto upload...");
                 });
                 
-                // Tạo container client với dữ liệu từ UI thread
                 string connectionString = "";
                 string containerName = "";
                 
@@ -916,7 +848,6 @@ namespace AzureUploaderWPF
                     connectionString, 
                     containerName);
                 
-                // Upload tất cả các file mới
                 int successCount = 0;
                 int failCount = 0;
                 
@@ -924,10 +855,8 @@ namespace AzureUploaderWPF
                 {
                     try
                     {
-                        // Upload file
                         await UploadFileAsync(containerClient, filePath);
                         
-                        // Đánh dấu file đã được upload
                         uploadedFiles.TryAdd(filePath, DateTime.Now);
                         
                         successCount++;
@@ -936,7 +865,7 @@ namespace AzureUploaderWPF
                     {
                         await Dispatcher.InvokeAsync(() => 
                         {
-                            AddLogMsg($"Lỗi khi upload tự động file {Path.GetFileName(filePath)}: {ex.Message}");
+                            AddLogMsg($"Error auto uploading file {Path.GetFileName(filePath)}: {ex.Message}");
                         });
                         failCount++;
                     }
@@ -944,17 +873,16 @@ namespace AzureUploaderWPF
                 
                 await Dispatcher.InvokeAsync(() => 
                 {
-                    AddLogMsg($"Upload tự động hoàn tất. Thành công: {successCount}, Thất bại: {failCount}");
+                    AddLogMsg($"Auto upload completed. Success: {successCount}, Failed: {failCount}");
                 });
                 
-                // Lưu danh sách các file đã upload
                 SaveUploadedFilesLog();
             }
             catch (Exception ex)
             {
                 await Dispatcher.InvokeAsync(() => 
                 {
-                    AddLogMsg($"Lỗi trong quá trình kiểm tra tự động: {ex.Message}");
+                    AddLogMsg($"Error during auto upload: {ex.Message}");
                 });
             }
         }
@@ -983,7 +911,6 @@ namespace AzureUploaderWPF
                 }
                 else
                 {
-                    // Xóa file cấu hình nếu không chọn lưu
                     string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SETTINGS_FILE);
                     if (File.Exists(settingsPath))
                     {
@@ -1013,7 +940,6 @@ namespace AzureUploaderWPF
                         RememberSettingsCheckBox.IsChecked = true;
                         AddLogMsg("Loaded saved connection settings.");
                         
-                        // Tải cấu hình giám sát tự động nếu có
                         if (lines.Length >= 5)
                         {
                             monitorFolderPath = lines[2];
@@ -1022,14 +948,12 @@ namespace AzureUploaderWPF
                                 checkIntervalMinutes = interval;
                             }
                             
-                            // Thiết lập AutoStopDurationTextBox
                             if (lines.Length >= 6 && !string.IsNullOrEmpty(lines[5]))
                             {
                                 try
                                 {
                                     autoStopTime = DateTime.Parse(lines[5]);
                                     
-                                    // Tính thời gian còn lại
                                     TimeSpan remainingTime = autoStopTime.Value - DateTime.Now;
                                     if (remainingTime.TotalMinutes > 0)
                                     {
@@ -1038,31 +962,29 @@ namespace AzureUploaderWPF
                                     }
                                     else
                                     {
-                                        // Nếu đã hết thời gian, không khôi phục giám sát
                                         autoStopTime = null;
-                                        AutoStopDurationTextBox.Text = "24"; // Mặc định
+                                        AutoStopDurationTextBox.Text = "24"; 
                                     }
                                 }
                                 catch
                                 {
                                     autoStopTime = null;
-                                    AutoStopDurationTextBox.Text = "24"; // Mặc định
+                                    AutoStopDurationTextBox.Text = "24"; 
                                 }
                             }
                             
                             if (bool.TryParse(lines[4], out bool monitoring) && monitoring)
                             {
-                                // Khởi động lại giám sát tự động nếu đã bật trước đó và chưa hết thời gian
                                 if (Directory.Exists(monitorFolderPath) && 
                                     (!autoStopTime.HasValue || autoStopTime.Value > DateTime.Now))
                                 {
                                     StartMonitoring();
-                                    AddLogMsg($"Khởi động lại giám sát tự động cho thư mục: {monitorFolderPath}");
+                                    AddLogMsg($"Auto monitoring started for folder: {monitorFolderPath}");
                                     
                                     if (autoStopTime.HasValue)
                                     {
                                         TimeSpan remainingTime = autoStopTime.Value - DateTime.Now;
-                                        AddLogMsg($"Giám sát sẽ tự động dừng sau {FormatTimeSpan(remainingTime)} (vào lúc {autoStopTime.Value.ToString("HH:mm:ss dd/MM/yyyy")})");
+                                        AddLogMsg($"Monitoring will automatically stop after {FormatTimeSpan(remainingTime)} (at {autoStopTime.Value.ToString("HH:mm:ss dd/MM/yyyy")})");
                                     }
                                 }
                             }
@@ -1083,7 +1005,6 @@ namespace AzureUploaderWPF
             UploadTabButton.IsChecked = true;
             MonitorTabButton.IsChecked = false;
             
-            // Đảm bảo đóng tất cả các popup khi chuyển tab
             ConnectionStringHelpPopup.Visibility = Visibility.Collapsed;
             ContainerNameHelpPopup.Visibility = Visibility.Collapsed;
         }
@@ -1095,7 +1016,6 @@ namespace AzureUploaderWPF
             UploadTabButton.IsChecked = false;
             MonitorTabButton.IsChecked = true;
             
-            // Đảm bảo đóng tất cả các popup khi chuyển tab
             ConnectionStringHelpPopup.Visibility = Visibility.Collapsed;
             ContainerNameHelpPopup.Visibility = Visibility.Collapsed;
         }
@@ -1112,7 +1032,6 @@ namespace AzureUploaderWPF
 
         private void AddLogMsg(string message)
         {
-            // Kiểm tra xem phương thức này có được gọi từ UI thread không
             if (Dispatcher.CheckAccess())
             {
                 LogListBox.Items.Add($"[{DateTime.Now.ToString("HH:mm:ss")}] {message}");
@@ -1120,7 +1039,6 @@ namespace AzureUploaderWPF
             }
             else
             {
-                // Nếu không, sử dụng Dispatcher để chuyển sang UI thread
                 Dispatcher.InvokeAsync(() =>
                 {
                     LogListBox.Items.Add($"[{DateTime.Now.ToString("HH:mm:ss")}] {message}");
@@ -1135,22 +1053,19 @@ namespace AzureUploaderWPF
             {
                 if (string.IsNullOrWhiteSpace(ConnectionStringTextBox.Text) || string.IsNullOrWhiteSpace(ContainerNameTextBox.Text))
                 {
-                    WpfMessageBox.Show("Vui lòng nhập đầy đủ thông tin kết nối Azure Storage!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    WpfMessageBox.Show("Please enter complete Azure Storage connection information!", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Lưu cấu hình nếu được chọn
                 SaveSettings();
 
-                // Tạo container client để kiểm tra xem container có tồn tại
                 BlobContainerClient containerClient = new BlobContainerClient(ConnectionStringTextBox.Text, ContainerNameTextBox.Text);
                 
-                // Kiểm tra xem container có tồn tại không
                 bool containerExists = await containerClient.ExistsAsync();
                 if (!containerExists)
                 {
-                    WpfMessageBox.Show($"Container '{ContainerNameTextBox.Text}' không tồn tại. Vui lòng kiểm tra lại tên container!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                    AddLogMsg($"Upload thất bại: Container '{ContainerNameTextBox.Text}' không tồn tại.");
+                    WpfMessageBox.Show($"Container '{ContainerNameTextBox.Text}' does not exist. Please check the container name!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AddLogMsg($"Upload failed: Container '{ContainerNameTextBox.Text}' does not exist.");
                     return;
                 }
 
@@ -1165,11 +1080,9 @@ namespace AzureUploaderWPF
                     string filePath = openFileDialog.FileName;
                     AddLogMsg($"Selected file: {filePath}");
 
-                    // 1. Hiển thị preview
                     DataTable table = ReadCsvToDataTable(filePath);
                     PreviewDataGrid.ItemsSource = table.DefaultView;
 
-                    // 2. Upload
                     AddLogMsg("STARTING MANUAL UPLOAD...");
                     
                     await UploadFileAsync(containerClient, filePath);
@@ -1183,42 +1096,35 @@ namespace AzureUploaderWPF
             catch (Exception ex)
             {
                 AddLogMsg($"Error: {ex.Message}");
-                WpfMessageBox.Show($"Lỗi: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                WpfMessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-        /// <summary>
-        /// Xử lý sự kiện khi nhấn nút Upload Folder (tự động upload nhiều file CSV)
-        /// </summary>
         private async void UploadFolderButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(ConnectionStringTextBox.Text) || string.IsNullOrWhiteSpace(ContainerNameTextBox.Text))
                 {
-                    WpfMessageBox.Show("Vui lòng nhập đầy đủ thông tin kết nối Azure Storage!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    WpfMessageBox.Show("Please enter complete Azure Storage connection information!", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                // Lưu cấu hình nếu được chọn
                 SaveSettings();
 
-                // Tạo container client để kiểm tra xem container có tồn tại
                 BlobContainerClient containerClient = new BlobContainerClient(ConnectionStringTextBox.Text, ContainerNameTextBox.Text);
                 
-                // Kiểm tra xem container có tồn tại không
                 bool containerExists = await containerClient.ExistsAsync();
                 if (!containerExists)
                 {
-                    WpfMessageBox.Show($"Container '{ContainerNameTextBox.Text}' không tồn tại. Vui lòng kiểm tra lại tên container!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                    AddLogMsg($"Upload thất bại: Container '{ContainerNameTextBox.Text}' không tồn tại.");
+                    WpfMessageBox.Show($"Container '{ContainerNameTextBox.Text}' does not exist. Please check the container name!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    AddLogMsg($"Upload failed: Container '{ContainerNameTextBox.Text}' does not exist.");
                     return;
                 }
 
-                // Hiển thị dialog chọn thư mục
                 var folderBrowserDialog = new WinForms.FolderBrowserDialog
                 {
-                    Description = "Chọn thư mục chứa các file CSV",
+                    Description = "Select folder containing CSV files",
                     ShowNewFolderButton = false
                 };
 
@@ -1227,45 +1133,39 @@ namespace AzureUploaderWPF
                     string selectedFolder = folderBrowserDialog.SelectedPath;
                     AddLogMsg($"Selected folder: {selectedFolder}");
 
-                    // Tìm tất cả các file CSV trong thư mục
                     string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv");
                     
                     if (csvFiles.Length == 0)
                     {
-                        WpfMessageBox.Show("Không tìm thấy file CSV nào trong thư mục này!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                        WpfMessageBox.Show("No CSV files found in this folder!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
                         AddLogMsg("No CSV files found in the selected folder.");
                         return;
                     }
 
                     AddLogMsg($"Found {csvFiles.Length} CSV files in folder.");
                     
-                    // Confirm với người dùng
                     MessageBoxResult result = WpfMessageBox.Show(
-                        $"Tìm thấy {csvFiles.Length} file CSV. Bạn có muốn upload tất cả?", 
-                        "Xác nhận upload", 
+                        $"Found {csvFiles.Length} CSV files. Do you want to upload all?", 
+                        "Confirm upload", 
                         MessageBoxButton.YesNo, 
                         MessageBoxImage.Question);
                     
                     if (result == MessageBoxResult.Yes)
                     {
-                        // Hiển thị preview file đầu tiên
                         if (csvFiles.Length > 0)
                         {
                             DataTable table = ReadCsvToDataTable(csvFiles[0]);
                             PreviewDataGrid.ItemsSource = table.DefaultView;
                         }
 
-                        // Bắt đầu upload
                         AddLogMsg("STARTING BATCH UPLOAD...");
                         int successCount = 0;
                         int failCount = 0;
 
-                        // Progress dialog
                         var progressWindow = new ProgressWindow(csvFiles.Length);
                         progressWindow.Owner = this;
                         progressWindow.Show();
 
-                        // Upload tuần tự từng file
                         for (int i = 0; i < csvFiles.Length; i++)
                         {
                             try
@@ -1273,10 +1173,8 @@ namespace AzureUploaderWPF
                                 string filePath = csvFiles[i];
                                 string fileName = Path.GetFileName(filePath);
                                 
-                                // Cập nhật thông tin tiến trình
                                 progressWindow.UpdateProgress(i + 1, fileName);
                                 
-                                // Upload file
                                 await UploadFileAsync(containerClient, filePath);
                                 successCount++;
                             }
@@ -1287,14 +1185,12 @@ namespace AzureUploaderWPF
                             }
                         }
 
-                        // Đóng cửa sổ tiến trình
                         progressWindow.Close();
 
-                        // Hiển thị thông báo kết quả
                         AddLogMsg($"BATCH UPLOAD COMPLETED. Success: {successCount}, Failed: {failCount}");
                         WpfMessageBox.Show(
-                            $"Upload hoàn tất.\nThành công: {successCount} file\nThất bại: {failCount} file", 
-                            "Kết quả upload",
+                            $"Upload completed.\nSuccess: {successCount} files\nFailed: {failCount} files", 
+                            "Upload results",
                             MessageBoxButton.OK, 
                             MessageBoxImage.Information);
                     }
@@ -1307,7 +1203,7 @@ namespace AzureUploaderWPF
             catch (Exception ex)
             {
                 AddLogMsg($"Error: {ex.Message}");
-                WpfMessageBox.Show($"Lỗi: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                WpfMessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1369,29 +1265,20 @@ namespace AzureUploaderWPF
             WpfApplication.Current.Shutdown();
         }
 
-        /// <summary>
-        /// Xử lý sự kiện khi nhấn nút toggle sidebar
-        /// </summary>
         private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
         {
             if (isSidebarExpanded)
             {
-                // Thu nhỏ sidebar
                 CollapseSidebar();
             }
             else
             {
-                // Mở rộng sidebar
                 ExpandSidebar();
             }
         }
 
-        /// <summary>
-        /// Thu nhỏ sidebar với animation mượt mà
-        /// </summary>
         private void CollapseSidebar()
         {
-            // Tạo animation mượt mà cho GridLength
             var animation = new GridLengthAnimation
             {
                 From = new GridLength(EXPANDED_WIDTH),
@@ -1400,10 +1287,8 @@ namespace AzureUploaderWPF
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             
-            // Thay đổi trạng thái
             isSidebarExpanded = false;
             
-            // Thay đổi nút toggle với animation
             var rotateAnimation = new DoubleAnimation
             {
                 From = 0,
@@ -1412,7 +1297,6 @@ namespace AzureUploaderWPF
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
             };
             
-            // Tạo animation fade-out cho các thành phần cần ẩn
             var fadeOut = new DoubleAnimation
             {
                 From = 1,
@@ -1423,64 +1307,50 @@ namespace AzureUploaderWPF
             
             fadeOut.Completed += (s, e) =>
             {
-                // Ẩn các thành phần không cần thiết sau khi fade out
                 ManagementLabel.Visibility = Visibility.Collapsed;
                 SettingsLabel.Visibility = Visibility.Collapsed;
                 FooterPanel.Visibility = Visibility.Collapsed;
                 LogoPanel.Visibility = Visibility.Collapsed;
-                
-                // Thay đổi nút toggle
+
                 ((TextBlock)ToggleSidebarButton.Content).Text = "\uE701";
                 
-                // Căn chỉnh lại các icon cho chế độ thu nhỏ
                 foreach (WpfRadioButton rb in NavigationPanel.Children.OfType<WpfRadioButton>())
                 {
-                    // Lưu trữ nội dung gốc trong Tag
+
                     if (rb.Tag != null && rb.Tag.ToString().Length == 1)
                     {
-                        // Đây là icon Unicode, không thay đổi
                     }
                     else
                     {
                         rb.Content = "";
                     }
                     
-                    // Căn giữa các nút khi thu nhỏ
                     rb.HorizontalContentAlignment = WpfHorizontalAlignment.Center;
                     rb.Padding = new Thickness(0);
                 }
             };
             
-            // Áp dụng animation fade-out cho các thành phần
             ManagementLabel.BeginAnimation(OpacityProperty, fadeOut);
             SettingsLabel.BeginAnimation(OpacityProperty, fadeOut);
             FooterPanel.BeginAnimation(OpacityProperty, fadeOut);
             LogoPanel.BeginAnimation(OpacityProperty, fadeOut);
             
-            // Fade-out nội dung text trong các RadioButton
             foreach (WpfRadioButton rb in NavigationPanel.Children.OfType<WpfRadioButton>())
             {
                 if (rb.Content != null && rb.Content.ToString() != "")
                 {
-                    // Lưu trữ nội dung hiện tại để khôi phục sau này
                     if (rb.Tag != null && rb.Tag.ToString().Length > 1)
                     {
-                        // Nếu có thêm thông tin trong Tag, chỉ áp dụng animation opacity
                         rb.BeginAnimation(OpacityProperty, fadeOut);
                     }
                 }
             }
             
-            // Thực hiện animation thay đổi kích thước
             SidebarColumn.BeginAnimation(ColumnDefinition.WidthProperty, animation);
         }
 
-        /// <summary>
-        /// Mở rộng sidebar với animation mượt mà
-        /// </summary>
         private void ExpandSidebar()
         {
-            // Tạo animation mượt mà cho GridLength
             var animation = new GridLengthAnimation
             {
                 From = new GridLength(COLLAPSED_WIDTH),
@@ -1489,20 +1359,16 @@ namespace AzureUploaderWPF
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
             };
             
-            // Thay đổi trạng thái
             isSidebarExpanded = true;
             
-            // Thay đổi nút toggle trong quá trình animation
             ((TextBlock)ToggleSidebarButton.Content).Text = "\uE700";
             
-            // Đặt lại nội dung cho các nút điều hướng
             UploadTabButton.Content = "Upload File";
             UploadTabButton.Opacity = 0;
             
             MonitorTabButton.Content = "Error Monitor";
             MonitorTabButton.Opacity = 0;
             
-            // Tìm và đặt lại nội dung cho các RadioButton khác
             foreach (WpfRadioButton rb in NavigationPanel.Children.OfType<WpfRadioButton>())
             {
                 if (rb != UploadTabButton && rb != MonitorTabButton)
@@ -1514,12 +1380,10 @@ namespace AzureUploaderWPF
                     rb.Opacity = 0;
                 }
                 
-                // Phục hồi padding và căn lề ban đầu
                 rb.HorizontalContentAlignment = WpfHorizontalAlignment.Left;
                 rb.Padding = new Thickness(20, 0, 20, 0);
             }
             
-            // Hiện lại các thành phần trước khi bắt đầu animation fade-in
             ManagementLabel.Visibility = Visibility.Visible;
             ManagementLabel.Opacity = 0;
             
@@ -1532,10 +1396,8 @@ namespace AzureUploaderWPF
             LogoPanel.Visibility = Visibility.Visible;
             LogoPanel.Opacity = 0;
             
-            // Animation đã hoàn thành một nửa, thực hiện animation fade-in
             animation.Completed += (s, e) =>
             {
-                // Tạo animation fade-in
                 var fadeIn = new DoubleAnimation
                 {
                     From = 0,
@@ -1544,33 +1406,28 @@ namespace AzureUploaderWPF
                     EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
                 };
                 
-                // Áp dụng animation fade-in cho các thành phần
                 ManagementLabel.BeginAnimation(OpacityProperty, fadeIn);
                 SettingsLabel.BeginAnimation(OpacityProperty, fadeIn);
                 FooterPanel.BeginAnimation(OpacityProperty, fadeIn);
                 LogoPanel.BeginAnimation(OpacityProperty, fadeIn);
                 
-                // Fade-in nội dung text trong các RadioButton
                 foreach (WpfRadioButton rb in NavigationPanel.Children.OfType<WpfRadioButton>())
                 {
                     rb.BeginAnimation(OpacityProperty, fadeIn);
                 }
             };
             
-            // Thực hiện animation thay đổi kích thước
             SidebarColumn.BeginAnimation(ColumnDefinition.WidthProperty, animation);
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            // Dừng giám sát khi đóng ứng dụng
             if (isMonitoring)
             {
                 StopMonitoring();
-                AddLogMsg("Đã dừng giám sát tự động do đóng ứng dụng.");
+                AddLogMsg("Auto monitoring stopped due to application closure.");
             }
             
-            // Lưu cấu hình
             SaveSettings();
             
             base.OnClosing(e);

@@ -14,24 +14,20 @@ namespace AzureUploaderWPF.Views
         {
             InitializeComponent();
             this.totalFiles = totalFiles;
-            
-            // Cấu hình các giá trị ban đầu
+
+            // Configure initial values
             TotalFilesText.Text = totalFiles.ToString();
             CurrentFileText.Text = "0";
             PercentageText.Text = "0%";
             ProgressBar.Value = 0;
             ProgressBar.Maximum = totalFiles;
-            CurrentFileNameText.Text = "Đang chuẩn bị...";
+            CurrentFileNameText.Text = "Preparing...";
         }
 
-        /// <summary>
-        /// Cập nhật thông tin tiến trình
-        /// </summary>
         /// <param name="currentFile">Số thứ tự file đang xử lý</param>
         /// <param name="fileName">Tên file đang xử lý</param>
         public void UpdateProgress(int currentFile, string fileName)
         {
-            // Đảm bảo cập nhật UI từ thread chính
             this.Dispatcher.Invoke(() =>
             {
                 CurrentFileText.Text = currentFile.ToString();
@@ -40,8 +36,7 @@ namespace AzureUploaderWPF.Views
                 PercentageText.Text = $"{percentage}%";
                 CurrentFileNameText.Text = fileName;
                 
-                // Cập nhật tiêu đề cửa sổ
-                this.Title = $"Đang upload... {percentage}% hoàn thành";
+                this.Title = $"Uploading... {percentage}% complete";
             });
         }
     }

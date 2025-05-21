@@ -145,18 +145,18 @@ namespace AzureUploaderWPF.ViewModels
                 if (result.Success)
                 {
                     ShowConnectionSuccess(result.Message);
-                    AddLogMsg($"Kết nối thành công: {result.Message}");
+                    AddLogMsg($"Connection successful: {result.Message}");
                 }
                 else
                 {
                     ShowConnectionError(result.Message);
-                    AddLogMsg($"Lỗi kết nối: {result.Message}");
+                    AddLogMsg($"Connection error: {result.Message}");
                 }
             }
             catch (Exception ex)
             {
                 ShowConnectionError(ex.Message);
-                AddLogMsg($"Lỗi kết nối: {ex.Message}");
+                AddLogMsg($"Connection error: {ex.Message}");
             }
         }
 
@@ -165,7 +165,7 @@ namespace AzureUploaderWPF.ViewModels
             IsConnectionTesting = true;
             IsConnectionSuccess = false;
             IsConnectionFailed = false;
-            ConnectionTestMessage = "Đang kiểm tra kết nối...";
+            ConnectionTestMessage = "Testing connection...";
         }
 
         private void ShowConnectionSuccess(string details)
@@ -201,7 +201,7 @@ namespace AzureUploaderWPF.ViewModels
                     
                     if (selectedFiles.Length == 0)
                     {
-                        AddLogMsg("Không có file nào được chọn.");
+                        AddLogMsg("No files selected.");
                         return;
                     }
 
@@ -218,7 +218,7 @@ namespace AzureUploaderWPF.ViewModels
                         string fileName = Path.GetFileName(filePath);
                         
                         progressWindow.UpdateProgress(currentFile, fileName);
-                        AddLogMsg($"Đang xử lý: {fileName}");
+                        AddLogMsg($"Processing: {fileName}");
                         
                         try
                         {
@@ -234,17 +234,17 @@ namespace AzureUploaderWPF.ViewModels
                         }
                         catch (Exception ex)
                         {
-                            AddLogMsg($"Lỗi upload {fileName}: {ex.Message}");
+                            AddLogMsg($"Error uploading {fileName}: {ex.Message}");
                         }
                     }
                     
                     progressWindow.Close();
-                    AddLogMsg($"Đã hoàn thành xử lý {selectedFiles.Length} file.");
+                    AddLogMsg($"Completed processing {selectedFiles.Length} files.");
                 }
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi: {ex.Message}");
+                AddLogMsg($"Error: {ex.Message}");
             }
         }
 
@@ -262,7 +262,7 @@ namespace AzureUploaderWPF.ViewModels
                     
                     if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
                     {
-                        AddLogMsg("Thư mục không hợp lệ.");
+                        AddLogMsg("Invalid folder.");
                         return;
                     }
                     
@@ -288,7 +288,7 @@ namespace AzureUploaderWPF.ViewModels
                         string fileName = Path.GetFileName(filePath);
                         
                         progressWindow.UpdateProgress(currentFile, fileName);
-                        AddLogMsg($"Đang xử lý: {fileName}");
+                        AddLogMsg($"Processing: {fileName}");
                         
                         try
                         {
@@ -304,17 +304,17 @@ namespace AzureUploaderWPF.ViewModels
                         }
                         catch (Exception ex)
                         {
-                            AddLogMsg($"Lỗi upload {fileName}: {ex.Message}");
+                            AddLogMsg($"Error uploading {fileName}: {ex.Message}");
                         }
                     }
                     
                     progressWindow.Close();
-                    AddLogMsg($"Đã hoàn thành xử lý {csvFiles.Length} file trong thư mục.");
+                    AddLogMsg($"Completed processing {csvFiles.Length} files in folder.");
                 }
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi: {ex.Message}");
+                AddLogMsg($"Error: {ex.Message}");
             }
         }
 
@@ -330,13 +330,13 @@ namespace AzureUploaderWPF.ViewModels
                 
                 if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
                 {
-                    AddLogMsg("Thư mục không hợp lệ.");
+                    AddLogMsg("Invalid folder.");
                     return;
                 }
                 
                 StorageSettings.MonitorFolderPath = folderPath;
                 SettingsManager.Instance.SaveSettings();
-                AddLogMsg($"Đã chọn thư mục giám sát: {folderPath}");
+                AddLogMsg($"Selected monitoring folder: {folderPath}");
             }
         }
 
@@ -346,11 +346,11 @@ namespace AzureUploaderWPF.ViewModels
             {
                 _autoUploadService.StartMonitoring();
                 OnPropertyChanged(nameof(IsAutoUploadRunning));
-                AddLogMsg("Đã bắt đầu giám sát tự động.");
+                AddLogMsg("Auto monitoring started.");
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi khi bắt đầu giám sát: {ex.Message}");
+                AddLogMsg($"Error starting monitoring: {ex.Message}");
             }
         }
 
@@ -360,11 +360,11 @@ namespace AzureUploaderWPF.ViewModels
             {
                 _autoUploadService.StopMonitoring();
                 OnPropertyChanged(nameof(IsAutoUploadRunning));
-                AddLogMsg("Đã dừng giám sát tự động.");
+                AddLogMsg("Auto monitoring stopped.");
             }
             catch (Exception ex)
             {
-                AddLogMsg($"Lỗi khi dừng giám sát: {ex.Message}");
+                AddLogMsg($"Error stopping monitoring: {ex.Message}");
             }
         }
 
