@@ -1030,6 +1030,16 @@ namespace AzureUploaderWPF
             ShowMonitorTab();
         }
 
+        private void ConfigurationTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            WpfMessageBox.Show("Configuration function is under development. Please come back later!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void UserProfileTabButton_Click(object sender, RoutedEventArgs e)
+        {
+            WpfMessageBox.Show("User Profile function is under development. Please come back later!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         private void AddLogMsg(string message)
         {
             if (Dispatcher.CheckAccess())

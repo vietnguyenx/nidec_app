@@ -316,14 +316,18 @@
                     
                     <TextBlock Text="SETTINGS" Margin="24,5,0,15" FontSize="12" Foreground="#7F8C8D" FontWeight="SemiBold" x:Name="SettingsLabel"/>
                     
-                    <RadioButton Style="{StaticResource NavButtonStyle}"
+                    <RadioButton x:Name="ConfigurationTabButton"
+                                 Style="{StaticResource NavButtonStyle}"
                                  Content="Configuration"
                                  Tag="&#xE713;"
+                                 Click="ConfigurationTabButton_Click"
                                  GroupName="NavMenu"/>
                     
-                    <RadioButton Style="{StaticResource NavButtonStyle}"
+                    <RadioButton x:Name="UserProfileTabButton"
+                                 Style="{StaticResource NavButtonStyle}"
                                  Content="User Profile"
                                  Tag="&#xE77B;"
+                                 Click="UserProfileTabButton_Click"
                                  GroupName="NavMenu"/>
                 </StackPanel>
 
