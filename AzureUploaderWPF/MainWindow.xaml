@@ -4,6 +4,7 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Azure CSV Uploader"
         Width="1400" Height="900"
+        MinWidth="1200" MinHeight="700"
         ResizeMode="CanResize"
         Background="#FFFFFF">
     
@@ -347,290 +348,336 @@
         <Grid Grid.Column="1" Margin="25">
             <!-- Upload Content -->
             <Grid x:Name="UploadContent">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <!-- Menu Bar -->
-                <Menu Grid.Row="0" Background="Transparent">
-                    <MenuItem Header="File" Foreground="#2C3E50">
-                <MenuItem Header="Open CSV..." Command="{x:Static ApplicationCommands.Open}"/>
-                <Separator/>
-                <MenuItem Header="Exit" Click="ExitMenu_Click"/>
-            </MenuItem>
-                    <MenuItem Header="Settings" Foreground="#2C3E50">
-                <MenuItem Header="Theme..." Click="ThemeMenu_Click"/>
-            </MenuItem>
-                    <MenuItem Header="Help" Foreground="#2C3E50">
-                <MenuItem Header="Documentation" Click="DocsMenu_Click"/>
-                <MenuItem Header="About" Click="AboutMenu_Click"/>
-            </MenuItem>
-        </Menu>
-
-                <!-- Azure Storage Configuration -->
-                <Border Grid.Row="1" 
-                       Margin="0,20"
-                       Background="White"
-                       BorderBrush="#ECF0F1"
-                       BorderThickness="1"
-                       CornerRadius="8">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
-                    </Border.Effect>
-                    <Grid Margin="20">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Disabled">
+                    <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="300"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
-                        
-                        <TextBlock Text="Azure Storage Configuration" 
-                                  FontSize="16" 
-                                  FontWeight="SemiBold" 
-                                  Foreground="#2C3E50"
-                                  Margin="0,0,0,15"/>
 
-                        <!-- Connection String Row -->
-                        <Grid Grid.Row="1">
+                        <!-- Menu Bar -->
+                        <Menu Grid.Row="0" Background="Transparent">
+                            <MenuItem Header="File" Foreground="#2C3E50">
+                                <MenuItem Header="Open CSV..." Command="{x:Static ApplicationCommands.Open}"/>
+                                <Separator/>
+                                <MenuItem Header="Exit" Click="ExitMenu_Click"/>
+                            </MenuItem>
+                            <MenuItem Header="Settings" Foreground="#2C3E50">
+                                <MenuItem Header="Theme..." Click="ThemeMenu_Click"/>
+                            </MenuItem>
+                            <MenuItem Header="Help" Foreground="#2C3E50">
+                                <MenuItem Header="Documentation" Click="DocsMenu_Click"/>
+                                <MenuItem Header="About" Click="AboutMenu_Click"/>
+                            </MenuItem>
+                        </Menu>
+
+                        <!-- Azure Storage Configuration -->
+                        <Border Grid.Row="1" 
+                               Margin="0,20"
+                               Background="White"
+                               BorderBrush="#ECF0F1"
+                               BorderThickness="1"
+                               CornerRadius="8">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                            </Border.Effect>
+                            <Grid Margin="20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Text="Azure Storage Configuration" 
+                                          FontSize="16" 
+                                          FontWeight="SemiBold" 
+                                          Foreground="#2C3E50"
+                                          Margin="0,0,0,15"/>
+
+                                <!-- Connection String Row -->
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Text="Connection String:" 
+                                             Grid.Column="0"
+                                             VerticalAlignment="Center"
+                                             Foreground="#34495E"/>
+                                    
+                                    <TextBox Name="ConnectionStringTextBox" 
+                                           Grid.Column="1"
+                                           Style="{StaticResource TextBoxWithPlaceholder}"
+                                           Tag="Ex: DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=***;EndpointSuffix=core.windows.net"/>
+                                    
+                                    <Button Grid.Column="2" 
+                                           Content="Help" 
+                                           Margin="10,0,0,0"
+                                           Style="{StaticResource HelpButton}"
+                                           Click="ConnectionStringHelp_Click"/>
+                                </Grid>
+                                
+                                <!-- Container Name Row -->
+                                <Grid Grid.Row="2" Margin="0,15,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="130"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Text="Container Name:" 
+                                             Grid.Column="0"
+                                             VerticalAlignment="Center"
+                                             Foreground="#34495E"/>
+                                    
+                                    <TextBox Name="ContainerNameTextBox" 
+                                           Grid.Column="1"
+                                           Style="{StaticResource TextBoxWithPlaceholder}"
+                                           Tag="Ex: azureml,.."/>
+                                    
+                                    <Button Grid.Column="2" 
+                                           Content="Help" 
+                                           Margin="10,0,0,0"
+                                           Style="{StaticResource HelpButton}"
+                                           Click="ContainerNameHelp_Click"/>
+                                </Grid>
+                                
+                                <CheckBox Grid.Row="3" 
+                                         Name="RememberSettingsCheckBox" 
+                                         Content="Remember these settings for next time" 
+                                         Margin="130,15,0,0" 
+                                         Style="{StaticResource ModernCheckBox}"/>
+                                
+                                <!-- Test Connection Button -->
+                                <Button Grid.Row="4" 
+                                       Name="TestConnectionButton"
+                                       Content="TEST CONNECTION" 
+                                       Width="160" 
+                                       Height="38"
+                                       Margin="130,15,0,0"
+                                       Background="#3498DB" 
+                                       Foreground="White"
+                                       BorderThickness="0"
+                                       Click="TestConnectionButton_Click"
+                                       HorizontalAlignment="Left">
+                                    <Button.Resources>
+                                        <Style TargetType="Border">
+                                            <Setter Property="CornerRadius" Value="6"/>
+                                        </Style>
+                                    </Button.Resources>
+                                    <Button.Effect>
+                                        <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.2" Color="#333"/>
+                                    </Button.Effect>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Upload Button -->
+                        <Grid Grid.Row="2" Margin="0,5,0,25">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             
-                            <TextBlock Text="Connection String:" 
-                                     Grid.Column="0"
-                                     VerticalAlignment="Center"
-                                     Foreground="#34495E"/>
+                            <Button Grid.Column="0"
+                                  Name="UploadButton" 
+                                  Width="160" 
+                                  Height="45" 
+                                  Content="UPLOAD FILE" 
+                                  Background="#2C3E50" 
+                                  Foreground="White" 
+                                  BorderThickness="0"
+                                  Click="UploadButton_Click"
+                                  HorizontalAlignment="Left">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="6"/>
+                                    </Style>
+                                </Button.Resources>
+                                <Button.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                                </Button.Effect>
+                            </Button>
                             
-                            <TextBox Name="ConnectionStringTextBox" 
-                                   Grid.Column="1"
-                                   Style="{StaticResource TextBoxWithPlaceholder}"
-                                   Tag="Ex: DefaultEndpointsProtocol=https;AccountName=youraccount;AccountKey=***;EndpointSuffix=core.windows.net"/>
+                            <Button Grid.Column="1"
+                                  Name="UploadFolderButton" 
+                                  Width="180" 
+                                  Height="45" 
+                                  Content="UPLOAD FOLDER" 
+                                  Background="#3498DB" 
+                                  Foreground="White" 
+                                  BorderThickness="0"
+                                  Click="UploadFolderButton_Click"
+                                  HorizontalAlignment="Left"
+                                  Margin="15,0,0,0">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="6"/>
+                                    </Style>
+                                </Button.Resources>
+                                <Button.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                                </Button.Effect>
+                            </Button>
                             
-                            <Button Grid.Column="2" 
-                                   Content="Help" 
-                                   Margin="10,0,0,0"
-                                   Style="{StaticResource HelpButton}"
-                                   Click="ConnectionStringHelp_Click"/>
+                            <Button Grid.Column="2"
+                                  Name="AutoUploadButton" 
+                                  Width="180" 
+                                  Height="45" 
+                                  Content="AUTO UPLOAD" 
+                                  Background="#9C27B0" 
+                                  Foreground="White" 
+                                  BorderThickness="0"
+                                  Click="ShowAutoUploadConfig_Click"
+                                  HorizontalAlignment="Left"
+                                  Margin="15,0,0,0">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="6"/>
+                                    </Style>
+                                </Button.Resources>
+                                <Button.Effect>
+                                    <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
+                                </Button.Effect>
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="border" 
+                                                Background="{TemplateBinding Background}" 
+                                                CornerRadius="6"
+                                                BorderThickness="0">
+                                            <Grid>
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <!-- Indicator cho monitoring status -->
+                                                <Border x:Name="MonitoringIndicator" 
+                                                        Width="12" 
+                                                        Height="12" 
+                                                        Background="#4CAF50" 
+                                                        CornerRadius="6"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Top"
+                                                        Margin="0,5,5,0"
+                                                        Visibility="Collapsed">
+                                                    <Border.Effect>
+                                                        <DropShadowEffect ShadowDepth="1" BlurRadius="3" Opacity="0.3"/>
+                                                    </Border.Effect>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
                         </Grid>
-                        
-                        <!-- Container Name Row -->
-                        <Grid Grid.Row="2" Margin="0,15,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock Text="Container Name:" 
-                                     Grid.Column="0"
-                                     VerticalAlignment="Center"
-                                     Foreground="#34495E"/>
-                            
-                            <TextBox Name="ContainerNameTextBox" 
-                                   Grid.Column="1"
-                                   Style="{StaticResource TextBoxWithPlaceholder}"
-                                   Tag="Ex: azureml,.."/>
-                            
-                            <Button Grid.Column="2" 
-                                   Content="Help" 
-                                   Margin="10,0,0,0"
-                                   Style="{StaticResource HelpButton}"
-                                   Click="ContainerNameHelp_Click"/>
-                        </Grid>
-                        
-                        <CheckBox Grid.Row="3" 
-                                 Name="RememberSettingsCheckBox" 
-                                 Content="Remember these settings for next time" 
-                                 Margin="130,15,0,0" 
-                                 Style="{StaticResource ModernCheckBox}"/>
-                        
-                        <!-- Test Connection Button -->
-                        <Button Grid.Row="4" 
-                               Name="TestConnectionButton"
-                               Content="TEST CONNECTION" 
-                               Width="160" 
-                               Height="38"
-                               Margin="130,15,0,0"
-                               Background="#3498DB" 
-                               Foreground="White"
-                               BorderThickness="0"
-                               Click="TestConnectionButton_Click"
-                               HorizontalAlignment="Left">
-                            <Button.Resources>
-                                <Style TargetType="Border">
-                                    <Setter Property="CornerRadius" Value="6"/>
-                                </Style>
-                            </Button.Resources>
-                            <Button.Effect>
-                                <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.2" Color="#333"/>
-                            </Button.Effect>
-                        </Button>
+
+                        <!-- CSV Data Preview -->
+                        <Border Grid.Row="3" 
+                               Background="White"
+                               BorderBrush="#ECF0F1"
+                               BorderThickness="1"
+                               CornerRadius="8"
+                               Margin="0,0,0,20">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                            </Border.Effect>
+                            <Grid Margin="20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Text="CSV Data Preview" 
+                                          FontSize="16" 
+                                          FontWeight="SemiBold" 
+                                          Foreground="#2C3E50"
+                                          Margin="0,0,0,15"/>
+                                
+                                <DataGrid Grid.Row="1"
+                                         Name="PreviewDataGrid" 
+                                         AutoGenerateColumns="True" 
+                                         IsReadOnly="True" 
+                                         Height="200"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         GridLinesVisibility="Horizontal"
+                                         HorizontalGridLinesBrush="#ECF0F1"
+                                         RowBackground="White"
+                                         AlternatingRowBackground="#F9FAFB">
+                                    <DataGrid.Resources>
+                                        <Style TargetType="{x:Type DataGridColumnHeader}">
+                                            <Setter Property="Background" Value="#F5F7FA"/>
+                                            <Setter Property="Foreground" Value="#2C3E50"/>
+                                            <Setter Property="Padding" Value="10,8"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                        </Style>
+                                    </DataGrid.Resources>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+
+                        <!-- Log Output -->
+                        <Border Grid.Row="4" 
+                               Background="White"
+                               BorderBrush="#ECF0F1"
+                               BorderThickness="1"
+                               CornerRadius="8"
+                               Margin="0,0,0,20"
+                               MinHeight="250">
+                            <Border.Effect>
+                                <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
+                            </Border.Effect>
+                            <Grid Margin="20">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Text="Log Output" 
+                                          FontSize="16" 
+                                          FontWeight="SemiBold" 
+                                          Foreground="#2C3E50"
+                                          Margin="0,0,0,15"/>
+                                
+                                <ScrollViewer Grid.Row="1" 
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              Background="Transparent">
+                                    <ListBox Name="LogListBox" 
+                                            Background="Transparent" 
+                                            Foreground="#34495E" 
+                                            BorderThickness="0"
+                                            MinHeight="200"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+
+                        <!-- Footer -->
+                        <TextBlock Grid.Row="5" 
+                                  Text="This application is the property of the ITS Department - FPTU HCM. All rights reserved."
+                                  FontSize="11" 
+                                  FontStyle="Italic" 
+                                  Foreground="#7F8C8D"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,0,0,20"/>
                     </Grid>
-                </Border>
-
-                <!-- Upload Button -->
-                <Grid Grid.Row="2" Margin="0,5,0,25">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <Button Grid.Column="0"
-                          Name="UploadButton" 
-                          Width="160" 
-                          Height="45" 
-                          Content="UPLOAD FILE" 
-                          Background="#2C3E50" 
-                          Foreground="White" 
-                          BorderThickness="0"
-                          Click="UploadButton_Click"
-                          HorizontalAlignment="Left">
-                        <Button.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="6"/>
-                            </Style>
-                        </Button.Resources>
-                        <Button.Effect>
-                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
-                        </Button.Effect>
-                    </Button>
-                    
-                    <Button Grid.Column="1"
-                          Name="UploadFolderButton" 
-                          Width="180" 
-                          Height="45" 
-                          Content="UPLOAD FOLDER" 
-                          Background="#3498DB" 
-                          Foreground="White" 
-                          BorderThickness="0"
-                          Click="UploadFolderButton_Click"
-                          HorizontalAlignment="Left"
-                          Margin="15,0,0,0">
-                        <Button.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="6"/>
-                            </Style>
-                        </Button.Resources>
-                        <Button.Effect>
-                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
-                        </Button.Effect>
-                    </Button>
-                    
-                    <Button Grid.Column="2"
-                          Name="AutoUploadButton" 
-                          Width="180" 
-                          Height="45" 
-                          Content="AUTO UPLOAD" 
-                          Background="#9C27B0" 
-                          Foreground="White" 
-                          BorderThickness="0"
-                          Click="ShowAutoUploadConfig_Click"
-                          HorizontalAlignment="Left"
-                          Margin="15,0,0,0">
-                        <Button.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="CornerRadius" Value="6"/>
-                            </Style>
-                        </Button.Resources>
-                        <Button.Effect>
-                            <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.2" Color="#333"/>
-                        </Button.Effect>
-                    </Button>
-                </Grid>
-
-        <!-- CSV Data Preview -->
-                <Border Grid.Row="3" 
-                       Background="White"
-                       BorderBrush="#ECF0F1"
-                       BorderThickness="1"
-                       CornerRadius="8"
-                       Margin="0,0,0,20">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
-                    </Border.Effect>
-                    <Grid Margin="20">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Text="CSV Data Preview" 
-                                  FontSize="16" 
-                                  FontWeight="SemiBold" 
-                                  Foreground="#2C3E50"
-                                  Margin="0,0,0,15"/>
-                        
-                        <DataGrid Grid.Row="1"
-                                 Name="PreviewDataGrid" 
-                                 AutoGenerateColumns="True" 
-                                 IsReadOnly="True" 
-                                 Height="200"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 GridLinesVisibility="Horizontal"
-                                 HorizontalGridLinesBrush="#ECF0F1"
-                                 RowBackground="White"
-                                 AlternatingRowBackground="#F9FAFB">
-                            <DataGrid.Resources>
-                                <Style TargetType="{x:Type DataGridColumnHeader}">
-                                    <Setter Property="Background" Value="#F5F7FA"/>
-                                    <Setter Property="Foreground" Value="#2C3E50"/>
-                                    <Setter Property="Padding" Value="10,8"/>
-                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                </Style>
-                            </DataGrid.Resources>
-                        </DataGrid>
-                    </Grid>
-                </Border>
-
-        <!-- Log Output -->
-                <Border Grid.Row="4" 
-                       Background="White"
-                       BorderBrush="#ECF0F1"
-                       BorderThickness="1"
-                       CornerRadius="8"
-                       Margin="0,0,0,20">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="2" Direction="315" Opacity="0.1" BlurRadius="10"/>
-                    </Border.Effect>
-                    <Grid Margin="20">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        
-                        <TextBlock Text="Log Output" 
-                                  FontSize="16" 
-                                  FontWeight="SemiBold" 
-                                  Foreground="#2C3E50"
-                                  Margin="0,0,0,15"/>
-                        
-                        <ListBox Name="LogListBox" 
-                                Grid.Row="1"
-                                Background="Transparent" 
-                                Foreground="#34495E" 
-                                BorderThickness="0"/>
-                    </Grid>
-                </Border>
-
-        <!-- Footer -->
-                <TextBlock Grid.Row="5" 
-                          Text="This application is the property of the ITS Department - FPTU HCM. All rights reserved."
-                          FontSize="11" 
-                          FontStyle="Italic" 
-                          Foreground="#7F8C8D"
-                          HorizontalAlignment="Center"/>
+                </ScrollViewer>
             </Grid>
 
             <!-- Monitor Content -->

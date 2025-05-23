@@ -31,6 +31,7 @@ using System.Threading;
 using System.Collections.Concurrent;
 using AzureUploaderWPF.Views;
 using Microsoft.Web.WebView2.Wpf;
+using System.Text;
 
 namespace AzureUploaderWPF
 {
@@ -152,6 +153,15 @@ namespace AzureUploaderWPF
 
             // Khởi tạo WebView2
             InitializeWebView2();
+            
+            // Đăng ký sự kiện Loaded để cập nhật indicator sau khi UI được load
+            this.Loaded += MainWindow_Loaded;
+        }
+        
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Cập nhật monitoring indicator sau khi UI được load hoàn toàn
+            UpdateMonitoringIndicator();
         }
 
         private async void InitializeWebView2()
@@ -588,7 +598,36 @@ namespace AzureUploaderWPF
 
         private void CloseAutoUploadConfigPopup_Click(object sender, RoutedEventArgs e)
         {
-            AutoUploadConfigPopup.Visibility = Visibility.Collapsed;
+            // Nếu đang monitoring, hỏi người dùng có muốn dừng không
+            if (isMonitoring)
+            {
+                MessageBoxResult result = WpfMessageBox.Show(
+                    "Auto monitoring is currently running. Do you want to stop it?", 
+                    "Stop Auto Monitoring?", 
+                    MessageBoxButton.YesNoCancel, 
+                    MessageBoxImage.Question);
+                
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Dừng monitoring
+                    StopMonitoring();
+                    UpdateAutoUploadConfigUI();
+                    AddLogMsg("Auto monitoring stopped by user when closing config.");
+                    AutoUploadConfigPopup.Visibility = Visibility.Collapsed;
+                }
+                else if (result == MessageBoxResult.No)
+                {
+                    // Chỉ đóng popup, giữ monitoring chạy
+                    AutoUploadConfigPopup.Visibility = Visibility.Collapsed;
+                    AddLogMsg("Auto monitoring continues running in background.");
+                }
+                // Nếu Cancel thì không làm gì cả (giữ popup mở)
+            }
+            else
+            {
+                // Không monitoring, đóng popup bình thường
+                AutoUploadConfigPopup.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void SelectFolderButton_Click(object sender, RoutedEventArgs e)
@@ -607,8 +646,8 @@ namespace AzureUploaderWPF
                     FolderPathTextBox.Text = selectedFolder;
                     monitorFolderPath = selectedFolder;
                     
-                    string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv");
-                    AddLogMsg($"Selected monitoring folder: {selectedFolder}. Found {csvFiles.Length} CSV files.");
+                    string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv", SearchOption.AllDirectories);
+                    AddLogMsg($"Selected monitoring folder: {selectedFolder}. Found {csvFiles.Length} CSV files in folder and subfolders.");
                 }
             }
             catch (Exception ex)
@@ -679,6 +718,36 @@ namespace AzureUploaderWPF
             }
         }
 
+        private void UpdateMonitoringIndicator()
+        {
+            try
+            {
+                // Tìm MonitoringIndicator trong template của AutoUploadButton
+                if (AutoUploadButton.Template != null)
+                {
+                    var border = AutoUploadButton.Template.FindName("MonitoringIndicator", AutoUploadButton) as Border;
+                    if (border != null)
+                    {
+                        border.Visibility = isMonitoring ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                }
+                
+                // Cập nhật tooltip cho button
+                if (isMonitoring)
+                {
+                    AutoUploadButton.ToolTip = "Auto monitoring is running. Click to configure.";
+                }
+                else
+                {
+                    AutoUploadButton.ToolTip = "Configure auto upload monitoring";
+                }
+            }
+            catch
+            {
+                // Bỏ qua lỗi nếu có
+            }
+        }
+
         private void StartMonitoring()
         {
             if (isMonitoring) return;
@@ -695,6 +764,9 @@ namespace AzureUploaderWPF
 
             AddLogMsg($"Start folder monitoring: {monitorFolderPath}");
             AddLogMsg($"Test period: {checkIntervalMinutes} minutes");
+            
+            // Cập nhật indicator
+            UpdateMonitoringIndicator();
         }
 
         private void StopMonitoring()
@@ -710,6 +782,9 @@ namespace AzureUploaderWPF
             autoStopTime = null;
 
             AddLogMsg("Monitoring stopped");
+            
+            // Cập nhật indicator
+            UpdateMonitoringIndicator();
         }
 
         private void SetupAutoStop()
@@ -796,20 +871,20 @@ namespace AzureUploaderWPF
                     return;
                 }
                 
-                string[] csvFiles = Directory.GetFiles(monitorFolderPath, "*.csv");
+                string[] csvFiles = Directory.GetFiles(monitorFolderPath, "*.csv", SearchOption.AllDirectories);
                 
                 if (csvFiles.Length == 0)
                 {
                     await Dispatcher.InvokeAsync(() => 
                     {
-                        AddLogMsg("Auto check: No CSV files found.");
+                        AddLogMsg("Auto check: No CSV files found in folder and subfolders.");
                     });
                     return;
                 }
                 
                 await Dispatcher.InvokeAsync(() => 
                 {
-                    AddLogMsg($"Auto check: Found {csvFiles.Length} CSV files in folder.");
+                    AddLogMsg($"Auto check: Found {csvFiles.Length} CSV files in folder and subfolders.");
                 });
                 
                 List<string> newFiles = new List<string>();
@@ -833,6 +908,17 @@ namespace AzureUploaderWPF
                 await Dispatcher.InvokeAsync(() => 
                 {
                     AddLogMsg($"Auto check: Found {newFiles.Count} new CSV files. Starting auto upload...");
+                    
+                    // Hiển thị một số file mới đầu tiên
+                    for (int i = 0; i < Math.Min(3, newFiles.Count); i++)
+                    {
+                        string fileName = Path.GetFileName(newFiles[i]);
+                        AddLogMsg($"  New file {i + 1}: {fileName}");
+                    }
+                    if (newFiles.Count > 3)
+                    {
+                        AddLogMsg($"  ... and {newFiles.Count - 3} more new files");
+                    }
                 });
                 
                 string connectionString = "";
@@ -1090,8 +1176,18 @@ namespace AzureUploaderWPF
                     string filePath = openFileDialog.FileName;
                     AddLogMsg($"Selected file: {filePath}");
 
-                    DataTable table = ReadCsvToDataTable(filePath);
-                    PreviewDataGrid.ItemsSource = table.DefaultView;
+                    // Thử hiển thị preview, nếu lỗi thì bỏ qua và tiếp tục upload
+                    try
+                    {
+                        DataTable table = ReadCsvToDataTable(filePath);
+                        PreviewDataGrid.ItemsSource = table.DefaultView;
+                        AddLogMsg("File preview loaded successfully.");
+                    }
+                    catch (Exception previewEx)
+                    {
+                        AddLogMsg($"Cannot display preview: {previewEx.Message}. File will still be uploaded.");
+                        PreviewDataGrid.ItemsSource = null;
+                    }
 
                     AddLogMsg("STARTING MANUAL UPLOAD...");
                     
@@ -1143,29 +1239,51 @@ namespace AzureUploaderWPF
                     string selectedFolder = folderBrowserDialog.SelectedPath;
                     AddLogMsg($"Selected folder: {selectedFolder}");
 
-                    string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv");
+                    // Tìm kiếm CSV files trong tất cả subfolder
+                    string[] csvFiles = Directory.GetFiles(selectedFolder, "*.csv", SearchOption.AllDirectories);
                     
                     if (csvFiles.Length == 0)
                     {
-                        WpfMessageBox.Show("No CSV files found in this folder!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
-                        AddLogMsg("No CSV files found in the selected folder.");
+                        WpfMessageBox.Show("No CSV files found in this folder and its subfolders!", "Notification", MessageBoxButton.OK, MessageBoxImage.Information);
+                        AddLogMsg("No CSV files found in the selected folder and its subfolders.");
                         return;
                     }
 
-                    AddLogMsg($"Found {csvFiles.Length} CSV files in folder.");
+                    AddLogMsg($"Found {csvFiles.Length} CSV files in folder and subfolders.");
+                    
+                    // Hiển thị một số file đầu tiên để người dùng biết
+                    for (int i = 0; i < Math.Min(5, csvFiles.Length); i++)
+                    {
+                        string relativePath = Path.GetRelativePath(selectedFolder, csvFiles[i]);
+                        AddLogMsg($"  {i + 1}. {relativePath}");
+                    }
+                    if (csvFiles.Length > 5)
+                    {
+                        AddLogMsg($"  ... and {csvFiles.Length - 5} more files");
+                    }
                     
                     MessageBoxResult result = WpfMessageBox.Show(
-                        $"Found {csvFiles.Length} CSV files. Do you want to upload all?", 
+                        $"Found {csvFiles.Length} CSV files in folder and subfolders. Do you want to upload all?", 
                         "Confirm upload", 
                         MessageBoxButton.YesNo, 
                         MessageBoxImage.Question);
                     
                     if (result == MessageBoxResult.Yes)
                     {
+                        // Thử hiển thị preview của file đầu tiên, nếu lỗi thì bỏ qua
                         if (csvFiles.Length > 0)
                         {
-                            DataTable table = ReadCsvToDataTable(csvFiles[0]);
-                            PreviewDataGrid.ItemsSource = table.DefaultView;
+                            try
+                            {
+                                DataTable table = ReadCsvToDataTable(csvFiles[0]);
+                                PreviewDataGrid.ItemsSource = table.DefaultView;
+                                AddLogMsg("Preview of first file loaded successfully.");
+                            }
+                            catch (Exception previewEx)
+                            {
+                                AddLogMsg($"Cannot display preview: {previewEx.Message}. Files will still be uploaded.");
+                                PreviewDataGrid.ItemsSource = null;
+                            }
                         }
 
                         AddLogMsg("STARTING BATCH UPLOAD...");
@@ -1220,20 +1338,84 @@ namespace AzureUploaderWPF
         private DataTable ReadCsvToDataTable(string filePath)
         {
             var dt = new DataTable();
-            using (var reader = new StreamReader(filePath))
+            var columnNames = new HashSet<string>(); // Để theo dõi tên cột đã sử dụng
+            
+            using (var reader = new StreamReader(filePath, Encoding.UTF8))
             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
                 HasHeaderRecord = true,
                 MissingFieldFound = null,
-                BadDataFound = null
+                BadDataFound = null,
+                Encoding = Encoding.UTF8
             }))
             {
-                using (var dr = new CsvDataReader(csv))
+                // Đọc header
+                csv.Read();
+                csv.ReadHeader();
+                
+                // Tạo các cột cho DataTable với tên đã được làm sạch
+                foreach (string header in csv.HeaderRecord)
                 {
-                    dt.Load(dr);
+                    string sanitizedHeader = SanitizeColumnName(header);
+                    
+                    // Đảm bảo tên cột là duy nhất
+                    string uniqueColumnName = GetUniqueColumnName(sanitizedHeader, columnNames);
+                    columnNames.Add(uniqueColumnName);
+                    
+                    dt.Columns.Add(uniqueColumnName);
+                    
+                    // Lưu tên gốc để hiển thị
+                    dt.Columns[uniqueColumnName].Caption = header;
+                }
+                
+                // Đọc các dòng dữ liệu
+                while (csv.Read())
+                {
+                    DataRow row = dt.NewRow();
+                    foreach (DataColumn column in dt.Columns)
+                    {
+                        // Sử dụng tên gốc để lấy dữ liệu
+                        string originalHeader = column.Caption;
+                        row[column.ColumnName] = csv.GetField(originalHeader);
+                    }
+                    dt.Rows.Add(row);
                 }
             }
             return dt;
+        }
+
+        private string GetUniqueColumnName(string baseName, HashSet<string> existingNames)
+        {
+            string uniqueName = baseName;
+            int counter = 1;
+            
+            while (existingNames.Contains(uniqueName))
+            {
+                uniqueName = $"{baseName}_{counter}";
+                counter++;
+            }
+            
+            return uniqueName;
+        }
+
+        private string SanitizeColumnName(string columnName)
+        {
+            // Loại bỏ các ký tự không hợp lệ cho PropertyPath
+            string sanitized = System.Text.RegularExpressions.Regex.Replace(columnName, @"[^\w\d]", "_");
+            
+            // Loại bỏ các dấu gạch dưới liên tiếp
+            sanitized = System.Text.RegularExpressions.Regex.Replace(sanitized, @"_{2,}", "_");
+            
+            // Loại bỏ dấu gạch dưới ở đầu và cuối
+            sanitized = sanitized.Trim('_');
+            
+            // Đảm bảo tên cột không rỗng và không bắt đầu bằng số
+            if (string.IsNullOrEmpty(sanitized) || char.IsDigit(sanitized[0]))
+            {
+                sanitized = "Col_" + sanitized;
+            }
+            
+            return sanitized;
         }
 
         private async Task UploadFileAsync(BlobContainerClient containerClient, string filePath)
@@ -1434,8 +1616,23 @@ namespace AzureUploaderWPF
         {
             if (isMonitoring)
             {
-                StopMonitoring();
-                AddLogMsg("Auto monitoring stopped due to application closure.");
+                MessageBoxResult result = WpfMessageBox.Show(
+                    "Auto monitoring is currently running. Do you want to stop it before closing the application?", 
+                    "Stop Auto Monitoring?", 
+                    MessageBoxButton.YesNoCancel, 
+                    MessageBoxImage.Question);
+                
+                if (result == MessageBoxResult.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                else if (result == MessageBoxResult.Yes)
+                {
+                    StopMonitoring();
+                    AddLogMsg("Auto monitoring stopped due to application closure.");
+                }
+                // Nếu No thì vẫn đóng app nhưng monitoring sẽ dừng
             }
             
             SaveSettings();
